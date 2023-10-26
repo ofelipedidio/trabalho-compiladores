@@ -16,8 +16,8 @@ void process_match();
 
 white [ \t\r\n]+
 digit [0-9]
-alpha [a-zA-Z]
-alphanum [a-zA-Z0-9]
+alpha [a-z]
+alphanum [a-z0-9]
 
 line_comment_begin \/\/
 block_comment_begin \/\*
