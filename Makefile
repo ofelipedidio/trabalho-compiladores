@@ -4,6 +4,9 @@ CFLAGS=-I.
 DEPS=tokens.h
 OBJ=lex.yy.o main.o
 
+all: $(ETAPA)
+	
+
 lex.yy.c:
 	flex scanner.l
 

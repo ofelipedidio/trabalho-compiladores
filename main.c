@@ -1,3 +1,12 @@
+/* Porto Alegre, Outubro de 2023
+ * INF01147 - Compiladores
+ *
+ * Grupo B
+ * Felipe Souza Didio
+ * Pedro Company Beck
+ *
+ */
+
 /*
 Programa principal de impressão de tokens.
 Este arquivo será posteriormente substituído.

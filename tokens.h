@@ -1,3 +1,12 @@
+/* Porto Alegre, Outubro de 2023
+ * INF01147 - Compiladores
+ *
+ * Grupo B
+ * Felipe Souza Didio
+ * Pedro Company Beck
+ *
+ */
+
 /*
 Lista dos tokens, com valores constantes associados. Os valores das
 constantes são arbitrários, mas evite alterá-los.  Cada valor
