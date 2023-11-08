@@ -6,6 +6,10 @@
 
 int yylex(void);
 void yyerror (char const *mensagem);
+
+extern int get_line_number(void);
+extern int get_col_number(void);
+
 %}
 
 %token TK_PR_INT
@@ -99,6 +103,6 @@ literal: TK_PR_INT | TK_LIT_FLOAT | TK_LIT_TRUE | TK_LIT_FALSE;
 %%
 
 void yyerror (char const *mensagem) {
-    printf("%s\n", mensagem);
+    printf("Erro na linha %d, coluna %d: \n - %s\n", get_line_number(), get_col_number(), mensagem);
 }
 
