@@ -13,7 +13,7 @@
 %{
 #include<stdio.h>
 #include<stdlib.h>
-#include"tokens.h"
+#include"parser.tab.h"
 
 int line = 1;
 int col = 0;

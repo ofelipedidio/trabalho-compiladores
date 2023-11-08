@@ -1,14 +1,20 @@
-ETAPA=etapa1
+ETAPA=etapa2
 CC=gcc
 CFLAGS=-I.
-DEPS=tokens.h
-OBJ=lex.yy.o main.o
+DEPS=parser.tab.h
+OBJ=lex.yy.o main.o parser.tab.o
 
 all: $(ETAPA)
 	
 
 lex.yy.c:
 	flex scanner.l
+
+parser.tab.c:
+	bison -d parser.y
+
+parser.tab.h:
+	bison -d parser.y
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
@@ -20,12 +26,12 @@ run: $(ETAPA)
 	./$(ETAPA)
 
 clean:
-	rm -f lex.yy.* main.o etapa*
+	rm -f lex.yy.* *.o etapa* parser.tab.*
 	rm -rf entrega
 
 entrega: clean
 	mkdir entrega
-	cp *.c *.h *.l Makefile entrega
+	cp *.c *.h *.l *.y Makefile entrega
 	tar cvzf $(ETAPA).tgz -C entrega .
 	rm -rf entrega
 
