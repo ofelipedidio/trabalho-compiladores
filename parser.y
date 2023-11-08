@@ -1,3 +1,12 @@
+/* Porto Alegre, Novembro de 2023
+ * INF01147 - Compiladores
+ *
+ * Grupo B
+ * Felipe Souza Didio
+ * Pedro Company Beck
+ *
+ */
+
 %define parse.error verbose
 
 %{

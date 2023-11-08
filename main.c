@@ -1,4 +1,4 @@
-/* Porto Alegre, Outubro de 2023
+/* Porto Alegre, Novembro de 2023
  * INF01147 - Compiladores
  *
  * Grupo B
