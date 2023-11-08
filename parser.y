@@ -38,7 +38,9 @@ global_definition: global_element | global_definition global_element
 
 global_element: global_variable_definition | global_function_definition;
 
-global_variable_definition: type TK_IDENTIFICADOR ';';
+global_variable_definition: type global_variable_definition_names ';';
+
+global_variable_definition_names: TK_IDENTIFICADOR | TK_IDENTIFICADOR ',' global_variable_definition_names;
 
 global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
                           global_function_definition: '('                           ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
