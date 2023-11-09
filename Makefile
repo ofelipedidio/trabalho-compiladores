@@ -4,7 +4,7 @@ CFLAGS=-I.
 DEPS=parser.tab.h
 OBJ=lex.yy.o main.o parser.tab.o
 
-all: $(ETAPA)
+all: clean $(ETAPA)
 	
 
 lex.yy.c:
