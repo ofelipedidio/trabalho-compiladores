@@ -5,7 +5,6 @@ DEPS=parser.tab.h
 OBJ=lex.yy.o main.o parser.tab.o
 
 all: clean $(ETAPA)
-	
 
 lex.yy.c:
 	flex scanner.l
