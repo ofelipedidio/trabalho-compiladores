@@ -37,7 +37,7 @@ block_comment_end \*\/
 {white} {process_match();}
 
 {line_comment_begin}.* {process_match();}
-{block_comment_begin}(.|{white})*{block_comment_end} {process_match();}
+{block_comment_begin}([^*]|\*+[^/*])*(\**){block_comment_end} {process_match(); }
 
 int {return TK_PR_INT;}
 float {return TK_PR_FLOAT;}
