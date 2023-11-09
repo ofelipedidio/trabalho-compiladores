@@ -2,8 +2,8 @@
  * INF01147 - Compiladores
  *
  * Grupo B
- * Felipe Souza Didio
- * Pedro Company Beck
+ * Felipe Souza Didio - 00323392
+ * Pedro Company Beck - 00324055
  *
  */
 

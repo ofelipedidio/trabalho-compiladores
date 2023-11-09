@@ -2,8 +2,8 @@
  * INF01147 - Compiladores
  *
  * Grupo B
- * Felipe Souza Didio
- * Pedro Company Beck
+ * Felipe Souza Didio - 00323392
+ * Pedro Company Beck - 00324055
  *
  */
 
@@ -52,14 +52,14 @@ global_variable_definition: type global_variable_definition_names ';';
 global_variable_definition_names: TK_IDENTIFICADOR | TK_IDENTIFICADOR ',' global_variable_definition_names;
 
 global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
-                          global_function_definition: '('                           ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
+global_function_definition: '('                           ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
 
 parameter_list_definition: parameter_definition | parameter_list_definition ',' parameter_definition;
 
 parameter_definition: type TK_IDENTIFICADOR;
 
 block: '{' block_body '}';
-     block: '{'            '}';
+block: '{'            '}';
 
 block_body: command ';' | block_body command ';';
 
