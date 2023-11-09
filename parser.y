@@ -47,14 +47,14 @@ global_variable_definition: type global_variable_definition_names ';';
 global_variable_definition_names: TK_IDENTIFICADOR | TK_IDENTIFICADOR ',' global_variable_definition_names;
 
 global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
-                          global_function_definition: '('                           ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
+global_function_definition: '('                           ')' TK_OC_GE type '!' TK_IDENTIFICADOR block;
 
 parameter_list_definition: parameter_definition | parameter_list_definition ',' parameter_definition;
 
 parameter_definition: type TK_IDENTIFICADOR;
 
 block: '{' block_body '}';
-     block: '{'            '}';
+block: '{'            '}';
 
 block_body: command ';' | block_body command ';';
 
@@ -98,7 +98,7 @@ expr_8: '(' expression ')' | TK_IDENTIFICADOR | literal | function_call;
 
 type: TK_PR_INT | TK_PR_FLOAT | TK_PR_BOOL;
 
-literal: TK_PR_INT | TK_LIT_FLOAT | TK_LIT_TRUE | TK_LIT_FALSE;
+literal: TK_LIT_INT | TK_LIT_FLOAT | TK_LIT_TRUE | TK_LIT_FALSE;
 
 %%
 
