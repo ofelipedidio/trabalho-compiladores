@@ -103,6 +103,9 @@ literal: TK_PR_INT | TK_LIT_FLOAT | TK_LIT_TRUE | TK_LIT_FALSE;
 %%
 
 void yyerror (char const *mensagem) {
-    printf("Erro na linha %d, coluna %d: \n - %s\n", get_line_number(), get_col_number(), mensagem);
+    // A seguinte linha de código demontra como apresentar a coluna do erro, 
+    // functionalidade que nao foi habilitada para seguir a especificacao com mais regor:
+    // printf("Erro na linha %d, coluna %d: \n - %s\n", get_line_number(), get_col_number(), mensagem);
+    printf("Erro na linha %d: \n - %s\n", get_line_number(), mensagem);
 }
 
