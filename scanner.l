@@ -19,7 +19,9 @@ int line = 1;
 int col = 0;
 int line_next = 1;
 int col_next = 1;
+
 int get_line_number(void);
+int get_col_number(void);
 void process_match();
 %}
 
@@ -39,50 +41,54 @@ block_comment_end \*\/
 {line_comment_begin}.* {process_match();}
 {block_comment_begin}([^*]|\*+[^/*])*(\**){block_comment_end} {process_match(); }
 
-int {return TK_PR_INT;}
-float {return TK_PR_FLOAT;}
-bool {return TK_PR_BOOL;}
-if {return TK_PR_IF;}
-else {return TK_PR_ELSE;}
-while {return TK_PR_WHILE;}
-return {return TK_PR_RETURN;}
+int {process_match(); return TK_PR_INT;}
+float {process_match(); return TK_PR_FLOAT;}
+bool {process_match(); return TK_PR_BOOL;}
+if {process_match(); return TK_PR_IF;}
+else {process_match(); return TK_PR_ELSE;}
+while {process_match(); return TK_PR_WHILE;}
+return {process_match(); return TK_PR_RETURN;}
 
-\! {return (int) '!';}
-\* {return (int) '*';}
-\/ {return (int) '/';}
-\% {return (int) '%';}
-\+ {return (int) '+';}
-\- {return (int) '-';}
-\< {return (int) '<';}
-\> {return (int) '>';}
-\{ {return (int) '{';}
-\} {return (int) '}';}
-\( {return (int) '(';}
-\) {return (int) ')';}
-\= {return (int) '=';}
-\, {return (int) ',';}
-\; {return (int) ';';}
+\! {process_match(); return (int) '!';}
+\* {process_match(); return (int) '*';}
+\/ {process_match(); return (int) '/';}
+\% {process_match(); return (int) '%';}
+\+ {process_match(); return (int) '+';}
+\- {process_match(); return (int) '-';}
+\< {process_match(); return (int) '<';}
+\> {process_match(); return (int) '>';}
+\{ {process_match(); return (int) '{';}
+\} {process_match(); return (int) '}';}
+\( {process_match(); return (int) '(';}
+\) {process_match(); return (int) ')';}
+\= {process_match(); return (int) '=';}
+\, {process_match(); return (int) ',';}
+\; {process_match(); return (int) ';';}
 
-\<\= {return TK_OC_LE;}
-\>\= {return TK_OC_GE;}
-\=\= {return TK_OC_EQ;}
-\!\= {return TK_OC_NE;}
-\&   {return TK_OC_AND;}
-\|   {return TK_OC_OR;}
+\<\= {process_match(); return TK_OC_LE;}
+\>\= {process_match(); return TK_OC_GE;}
+\=\= {process_match(); return TK_OC_EQ;}
+\!\= {process_match(); return TK_OC_NE;}
+\&   {process_match(); return TK_OC_AND;}
+\|   {process_match(); return TK_OC_OR;}
 
-{digit}+ {return TK_LIT_INT;}
-{digit}*\.{digit}+ {return TK_LIT_FLOAT;}
-false {return TK_LIT_FALSE;}
-true {return TK_LIT_TRUE;}
+{digit}+ {process_match(); return TK_LIT_INT;}
+{digit}*\.{digit}+ {process_match(); return TK_LIT_FLOAT;}
+false {process_match(); return TK_LIT_FALSE;}
+true {process_match(); return TK_LIT_TRUE;}
 
-({alpha}|_)({alphanum}|_)* {return TK_IDENTIFICADOR;}
+({alpha}|_)({alphanum}|_)* {process_match(); return TK_IDENTIFICADOR;}
 
-. {return TK_ERRO;}
+. {process_match(); return TK_ERRO;}
 
 %%
 
 int get_line_number(void) {
-    return yylineno;
+    return line;
+}
+
+int get_col_number(void) {
+    return col;
 }
 
 void process_match() {

@@ -11,3 +11,4 @@ etapa8
 parser.tab.h
 parser.tab.c
 .DS_STORE
+test/program

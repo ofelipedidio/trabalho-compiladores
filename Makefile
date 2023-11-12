@@ -4,8 +4,7 @@ CFLAGS=-I.
 DEPS=parser.tab.h
 OBJ=lex.yy.o main.o parser.tab.o
 
-all: $(ETAPA)
-	
+all: clean $(ETAPA)
 
 lex.yy.c:
 	flex scanner.l
@@ -35,3 +34,7 @@ entrega: clean
 	tar cvzf $(ETAPA).tgz -C entrega .
 	rm -rf entrega
 
+test: clean $(ETAPA)
+	cp $(ETAPA) test/program
+	cd test; ./test_positive.sh
+	cd test; ./test_negative.sh

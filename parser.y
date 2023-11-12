@@ -15,6 +15,10 @@
 
 int yylex(void);
 void yyerror (char const *mensagem);
+
+extern int get_line_number(void);
+extern int get_col_number(void);
+
 %}
 
 %token TK_PR_INT
@@ -103,11 +107,14 @@ expr_8: '(' expression ')' | TK_IDENTIFICADOR | literal | function_call;
 
 type: TK_PR_INT | TK_PR_FLOAT | TK_PR_BOOL;
 
-literal: TK_PR_INT | TK_LIT_FLOAT | TK_LIT_TRUE | TK_LIT_FALSE;
+literal: TK_LIT_INT | TK_LIT_FLOAT | TK_LIT_TRUE | TK_LIT_FALSE;
 
 %%
 
 void yyerror (char const *mensagem) {
-    printf("%s\n", mensagem);
+    // A seguinte linha de código demontra como apresentar a coluna do erro, 
+    // functionalidade que nao foi habilitada para seguir a especificacao com mais regor:
+    // printf("Erro na linha %d, coluna %d: \n - %s\n", get_line_number(), get_col_number(), mensagem);
+    printf("Erro na linha %d: \n - %s\n", get_line_number(), mensagem);
 }
 
