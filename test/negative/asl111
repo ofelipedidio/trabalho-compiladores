@@ -1,0 +1,5 @@
+//INCORRECT
+(char param) >= int ! func{
+    float a;
+    a <= 3.5;
+}

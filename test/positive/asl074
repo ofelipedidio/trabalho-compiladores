@@ -1,0 +1,7 @@
+//CORRECT
+(int a, int b) >= int ! f
+{
+  int x;
+  int y;
+  f(x, y);
+}

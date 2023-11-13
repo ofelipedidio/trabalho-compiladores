@@ -1,0 +1,4 @@
+//INCORRECT
+(char param) >= int ! func {
+    classe a;
+}

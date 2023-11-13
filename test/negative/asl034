@@ -1,0 +1,6 @@
+//INCORRECT (old specification)
+()>=int!main
+{
+  bool a <= true;
+  return 0;
+}
