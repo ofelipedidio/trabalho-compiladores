@@ -1,0 +1,5 @@
+// INCORRECT (2023/1 specification)
+main() -> int {
+  int x;
+  x = x|3;
+}

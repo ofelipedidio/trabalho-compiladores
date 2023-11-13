@@ -67,7 +67,7 @@ block: '{'            '}';
 
 block_body: command ';' | block_body command ';';
 
-command: variable_declaration | variable_attribution | function_call | return_statement | if_statement | while_statement;
+command: variable_declaration | variable_attribution | function_call | return_statement | if_statement | while_statement | block;
 
 variable_declaration: type variable_names;
 
