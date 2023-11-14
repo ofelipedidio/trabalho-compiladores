@@ -38,7 +38,7 @@ clean:
 
 entrega: clean
 	mkdir entrega
-	cp *.c *.h *.l *.y Makefile entrega
+	cp *.c *.h *.l *.y Makefile entrega 2>/dev/null | true
 	tar cvzf $(ETAPA).tgz -C entrega .
 	rm -rf entrega
 
