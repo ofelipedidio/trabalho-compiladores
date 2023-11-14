@@ -1,3 +1,11 @@
+# Porto Alegre, Novembro de 2023
+# INF01147 - Compiladores
+#
+# Grupo B
+# Felipe Souza Didio - 00323392
+# Pedro Company Beck - 00324055
+#
+
 ETAPA=etapa2
 CC=gcc
 CFLAGS=-I.
