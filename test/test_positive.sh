@@ -2,7 +2,7 @@
 
 for file in positive/*; do 
     echo -n "Testing '$file' "
-    ./program < $file > /dev/null 2> /dev/null;
+    ./program < $file > /dev/null;
     if [[ $? -eq 0 ]]; then
         echo -e "\r(\033[32mSUCC\033[0m) Testing '$file' "
     else
