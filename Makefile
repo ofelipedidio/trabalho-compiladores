@@ -8,7 +8,7 @@
 
 ETAPA=etapa3
 CC=gcc
-CFLAGS=
+CFLAGS=-fsanitize=address,undefined,leak,pointer-overflow,vptr -g
 DEPS=parser.tab.h ast.h
 OBJ=lex.yy.o main.o parser.tab.o ast.o
 
@@ -23,10 +23,10 @@ parser.tab.h:
 	bison -d parser.y
 
 %.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(ETAPA): $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^
 
 run: $(ETAPA)
 	./$(ETAPA)

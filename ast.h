@@ -1,17 +1,43 @@
 #ifndef AST
 #define AST
 
-typedef struct empty_s { int temp; } empty_t; 
+typedef enum ast_value_type {
+    lit_int_t,
+    lit_float_t,
+    lit_bool_t,
+    text_t,
+    empty_t,
+} ast_value_type_t;
 
 typedef union ast_node_value {
-    long long int lit_int;
-    double lit_float;
-    int lit_bool;
-    char *lit_ident;
-    empty_t empty;
-} ast_node_value_t;
+    struct {
+        ast_value_type_t type;
+        long long int value;
+    } lit_int;
+    struct {
+        ast_value_type_t type;
+        double value;
+    } lit_float;
+    struct {
+        ast_value_type_t type;
+        int value;
+    } lit_bool;
+    struct {
+        ast_value_type_t type;
+        char *value;
+    } text;
+    struct {
+        ast_value_type_t type;
+    } empty;
+} ast_value_t;
 
-ast_node_value_t empty_value();
+ast_value_t value_new_int(long long int value);
+ast_value_t value_new_float(double value);
+ast_value_t value_new_bool(int value);
+ast_value_t value_new_text(char *value);
+ast_value_t value_new_empty();
+
+void value_free(ast_value_t value);
 
 typedef enum ast_node_type {
     noop,
@@ -48,12 +74,14 @@ typedef enum ast_node_type {
 
 typedef struct ast {
     ast_node_type_t type;
-    ast_node_value_t value;
+    ast_value_t value;
     int n;
     struct ast **children;
 } ast_t;
 
-ast_t *ast_new(ast_node_type_t type, ast_node_value_t value);
+ast_t *ast_new(ast_node_type_t type, ast_value_t value);
+
+ast_t *ast_new_empty(ast_node_type_t type);
 
 ast_t *ast_new_noop(char* message);
 
@@ -63,6 +91,6 @@ void ast_free(ast_t *ast);
 
 char *ast_node_type_name(ast_node_type_t type);
 
-void ast_node_value_label(ast_node_type_t type, ast_node_value_t *value, char buf[]);
+void ast_value_label(ast_value_t value, char buf[]);
 
 #endif // !AST

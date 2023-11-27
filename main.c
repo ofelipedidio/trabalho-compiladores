@@ -21,8 +21,9 @@ void exporta (void *arvore);
 int recr_print_lines[1024];
 
 void recr_print(ast_t *node, int depth);
+
 void recr_print(ast_t *node, int depth) {
-    ast_node_value_label(node->type, &node->value, buffer);
+    ast_value_label(node->value, buffer);
     printf("%s[%s]\n", ast_node_type_name(node->type), buffer);
     for (int i = 0; i < node->n; i++) {
         for (int i = 0; i < depth; i++) {
@@ -42,6 +43,7 @@ int main (int argc, char **argv)
 
     ast_t *tree = (ast_t*) arvore;
     recr_print(tree, 0);
+    ast_free(tree);
 
     return ret;
 }

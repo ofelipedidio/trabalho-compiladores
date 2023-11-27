@@ -1,29 +1,4 @@
 (int x) >= int! funcao {
-    {
-        a=1+1;
-    };
-    {
-        if (true) {
-            b=outra_funcao((1+1.2)-4/5, 1 + mais_uma_funcao(2, 2, 4, 5));
-        };
-        {
-            if(1==1){
-                a=1;
-                b=2;
-            };
-            {};
-        };
-    };
-    {
-        {};
-        {};
-        {};
-    }; 
-    return 1;
-}
-
-(int x) >= int! funcao1 {
-	if (1 + 1 < 2) {
-	};
+	func(1, 2, 3);
 }
 

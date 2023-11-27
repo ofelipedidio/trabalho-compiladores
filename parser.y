@@ -27,7 +27,7 @@ extern void *arvore;
 %start programa
 
 %union {
-    ast_node_value_t value;
+    ast_value_t value;
     ast_t *node;
 }
 
@@ -92,8 +92,8 @@ global_definition: global_definition global_function_definition { ast_add_child(
 
 global_variable_definition: type global_variable_definition_names ';' { /* NOOP */ };
 
-global_variable_definition_names: identifier { /* NOOP */ };
-global_variable_definition_names: global_variable_definition_names ',' identifier { /* NOOP */ };
+global_variable_definition_names: identifier { ast_free($1); /* NOOP */ };
+global_variable_definition_names: global_variable_definition_names ',' identifier { ast_free($3); /* NOOP */ };
 
 global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' TK_IDENTIFICADOR block { $$ = ast_new(func_declaration, $7); ast_add_child($$, $8); };
 global_function_definition: '('                           ')' TK_OC_GE type '!' TK_IDENTIFICADOR block { $$ = ast_new(func_declaration, $6); ast_add_child($$, $7); };
@@ -101,7 +101,7 @@ global_function_definition: '('                           ')' TK_OC_GE type '!' 
 parameter_list_definition: parameter_definition { /* NOOP */ };
 parameter_list_definition: parameter_list_definition ',' parameter_definition { /* NOOP */ };
 
-parameter_definition: type identifier { /* NOOP */ };
+parameter_definition: type identifier { ast_free($2); /* NOOP */ };
 
 block: '{' block_body '}' { $$ = $2; };
 block: '{'            '}' { $$ = ast_new_noop("empty_block"); };
@@ -119,54 +119,54 @@ command: block { $$ = $1; };
 
 variable_declaration: type variable_names { /* NOOP */ };
 
-variable_names: identifier { /* NOOP */ };
-variable_names: variable_names ',' identifier { /* NOOP */ };
+variable_names: identifier { ast_free($1); /* NOOP */ };
+variable_names: variable_names ',' identifier { ast_free($3); /* NOOP */ };
 
-variable_attribution: identifier '=' expression { $$ = ast_new(statement_attr, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3); };
+variable_attribution: identifier '=' expression { $$ = ast_new_empty(statement_attr); ast_add_child($$, $1); ast_add_child($$, $3); };
 
 function_call: TK_IDENTIFICADOR '(' parameter_list ')' { $$ = ast_new(statement_call, $1); ast_add_child($$, $3); };
 function_call: TK_IDENTIFICADOR '('                ')' { $$ = ast_new(statement_call, $1); ast_add_child($$, ast_new_noop("empty_call")); };
 
 parameter_list: expression { $$ = $1; };
-parameter_list: parameter_list ',' expression { ast_add_child($1, $3); $$ = $1; };
+parameter_list: expression ',' parameter_list  { ast_add_child($1, $3); $$ = $1; };
 
-return_statement: TK_PR_RETURN expression { $$ = ast_new(statement_return, empty_value()); ast_add_child($$, $2); };
+return_statement: TK_PR_RETURN expression { $$ = ast_new_empty(statement_return); ast_add_child($$, $2); };
 
-if_statement: TK_PR_IF '(' expression ')' block { $$ = ast_new(statement_if, empty_value()); ast_add_child($$, $3); ast_add_child($$, $5); ast_add_child($$, ast_new_noop("else_block")); };
-if_statement: TK_PR_IF '(' expression ')' block TK_PR_ELSE block { $$ = ast_new(statement_if, empty_value()); ast_add_child($$, $3); ast_add_child($$, $5); ast_add_child($$, $7); };
+if_statement: TK_PR_IF '(' expression ')' block { $$ = ast_new_empty(statement_if); ast_add_child($$, $3); ast_add_child($$, $5); ast_add_child($$, ast_new_noop("else_block")); };
+if_statement: TK_PR_IF '(' expression ')' block TK_PR_ELSE block { $$ = ast_new_empty(statement_if); ast_add_child($$, $3); ast_add_child($$, $5); ast_add_child($$, $7); };
 
-while_statement: TK_PR_WHILE '(' expression ')' block { $$ = ast_new(statement_while, empty_value()); ast_add_child($$, $3); ast_add_child($$, $5); };
+while_statement: TK_PR_WHILE '(' expression ')' block { $$ = ast_new_empty(statement_while); ast_add_child($$, $3); ast_add_child($$, $5); };
 
 expression: expr_1 { $$ = $1; };
 
 expr_1: expr_2 { $$ = $1; };
-expr_1: '-' expr_1 { $$ = ast_new(expr_inv, empty_value()); ast_add_child($$, $2); };
-expr_1: '!' expr_1 { $$ = ast_new(expr_not, empty_value()); ast_add_child($$, $2); };
+expr_1: '-' expr_1 { $$ = ast_new_empty(expr_inv); ast_add_child($$, $2); };
+expr_1: '!' expr_1 { $$ = ast_new_empty(expr_not); ast_add_child($$, $2); };
 
 expr_2: expr_3 { $$ = $1; };
-expr_2: expr_2 '*' expr_3 { $$ = ast_new(expr_mult, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_2: expr_2 '/' expr_3 { $$ = ast_new(expr_div, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_2: expr_2 '%' expr_3 { $$ = ast_new(expr_mod, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_2: expr_2 '*' expr_3 { $$ = ast_new_empty(expr_mult); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_2: expr_2 '/' expr_3 { $$ = ast_new_empty(expr_div); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_2: expr_2 '%' expr_3 { $$ = ast_new_empty(expr_mod); ast_add_child($$, $1); ast_add_child($$, $3);};
 
 expr_3: expr_4 { $$ = $1; };
-expr_3: expr_3 '+' expr_4 { $$ = ast_new(expr_add, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_3: expr_3 '-' expr_4 { $$ = ast_new(expr_sub, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_3: expr_3 '+' expr_4 { $$ = ast_new_empty(expr_add); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_3: expr_3 '-' expr_4 { $$ = ast_new_empty(expr_sub); ast_add_child($$, $1); ast_add_child($$, $3);};
 
 expr_4: expr_5 { $$ = $1; };
-expr_4: expr_4 '<' expr_5 { $$ = ast_new(expr_lt, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_4: expr_4 '>' expr_5 { $$ = ast_new(expr_gt, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_4: expr_4 TK_OC_LE expr_5 { $$ = ast_new(expr_le, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_4: expr_4 TK_OC_GE expr_5 { $$ = ast_new(expr_ge, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_4: expr_4 '<' expr_5 { $$ = ast_new_empty(expr_lt); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_4: expr_4 '>' expr_5 { $$ = ast_new_empty(expr_gt); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_4: expr_4 TK_OC_LE expr_5 { $$ = ast_new_empty(expr_le); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_4: expr_4 TK_OC_GE expr_5 { $$ = ast_new_empty(expr_ge); ast_add_child($$, $1); ast_add_child($$, $3);};
 
 expr_5: expr_6 { $$ = $1; };
-expr_5: expr_5 TK_OC_EQ expr_6 { $$ = ast_new(expr_eq, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_5: expr_5 TK_OC_NE expr_6 { $$ = ast_new(expr_ne, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);} 
+expr_5: expr_5 TK_OC_EQ expr_6 { $$ = ast_new_empty(expr_eq); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_5: expr_5 TK_OC_NE expr_6 { $$ = ast_new_empty(expr_ne); ast_add_child($$, $1); ast_add_child($$, $3);} 
 
 expr_6: expr_7 { $$ = $1; };
-expr_6: expr_6 TK_OC_AND expr_7 { $$ = ast_new(expr_and, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_6: expr_6 TK_OC_AND expr_7 { $$ = ast_new_empty(expr_and); ast_add_child($$, $1); ast_add_child($$, $3);};
 
 expr_7: expr_8 { $$ = $1; };
-expr_7: expr_7 TK_OC_OR expr_8 { $$ = ast_new(expr_or, empty_value()); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_7: expr_7 TK_OC_OR expr_8 { $$ = ast_new_empty(expr_or); ast_add_child($$, $1); ast_add_child($$, $3);};
 
 expr_8: '(' expression ')' { $$ = $2; };
 expr_8: identifier { $$ = $1; };
