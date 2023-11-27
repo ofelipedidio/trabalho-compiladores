@@ -86,7 +86,7 @@ void ast_add_child(ast_t *parent, ast_t *child) {
         return;
     }
 
-    ast_t **children = (ast_t**) reallocarray(parent->children, parent->n+1, sizeof(ast_t*));
+    ast_t **children = (ast_t**) realloc(parent->children, (parent->n+1) * sizeof(ast_t*));
     if (children == NULL) {
         fprintf(stderr, "Failed to allocate memory for a new child pointer\n");
         exit(EXIT_FAILURE);

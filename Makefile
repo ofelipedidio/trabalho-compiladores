@@ -8,7 +8,7 @@
 
 ETAPA=etapa3
 CC=gcc
-CFLAGS=-fsanitize=address,undefined,leak,pointer-overflow,vptr -g
+CFLAGS=-fsanitize=address -g
 DEPS=parser.tab.h ast.h
 OBJ=lex.yy.o main.o parser.tab.o ast.o
 
