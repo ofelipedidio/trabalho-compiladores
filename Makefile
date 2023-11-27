@@ -6,17 +6,16 @@
 # Pedro Company Beck - 00324055
 #
 
-ETAPA=etapa2
+ETAPA=etapa3
 CC=gcc
-CFLAGS=-I.
-DEPS=parser.tab.h
-OBJ=lex.yy.o main.o parser.tab.o
+CFLAGS=
+DEPS=parser.tab.h ast.h
+OBJ=lex.yy.o main.o parser.tab.o ast.o
 
 all: clean $(ETAPA)
 
 lex.yy.c:
 	flex scanner.l
-
 parser.tab.c:
 	bison -d parser.y
 

@@ -72,12 +72,12 @@ return {process_match(); return TK_PR_RETURN;}
 \&   {process_match(); return TK_OC_AND;}
 \|   {process_match(); return TK_OC_OR;}
 
-{digit}+ {process_match(); return TK_LIT_INT;}
-{digit}*\.{digit}+ {process_match(); return TK_LIT_FLOAT;}
-false {process_match(); return TK_LIT_FALSE;}
-true {process_match(); return TK_LIT_TRUE;}
+{digit}+ {process_match(); yylval.value.lit_int = atoll(yytext); return TK_LIT_INT;}
+{digit}*\.{digit}+ {process_match(); yylval.value.lit_float = atof(yytext); return TK_LIT_FLOAT;}
+true {process_match(); yylval.value.lit_bool = 1; return TK_LIT_TRUE;}
+false {process_match(); yylval.value.lit_bool = 0; return TK_LIT_FALSE;}
 
-({alpha}|_)({alphanum}|_)* {process_match(); return TK_IDENTIFICADOR;}
+({alpha}|_)({alphanum}|_)* {process_match(); yylval.value.lit_ident = strdup(yytext); return TK_IDENTIFICADOR;}
 
 . {process_match(); return TK_ERRO;}
 
