@@ -1,55 +1,28 @@
 #ifndef AST
 #define AST
 
-typedef enum ast_value_type {
-    lit_int_t,
-    lit_float_t,
-    lit_bool_t,
-    text_t,
-    empty_t,
-} ast_value_type_t;
+#include "lexeme.h"
 
-typedef union ast_node_value {
-    struct {
-        ast_value_type_t type;
-        long long int value;
-    } lit_int;
-    struct {
-        ast_value_type_t type;
-        double value;
-    } lit_float;
-    struct {
-        ast_value_type_t type;
-        int value;
-    } lit_bool;
-    struct {
-        ast_value_type_t type;
-        char *value;
-    } text;
-    struct {
-        ast_value_type_t type;
-    } empty;
-} ast_value_t;
+/* ##############
+ * # Structures #
+ * ############## */
+typedef enum {
+    // Internal (node)
+    noop, // Completely removed from ast
+    call_argument, // Actls like a leaf linked list struct(leaf, next)
 
-ast_value_t value_new_int(long long int value);
-ast_value_t value_new_float(double value);
-ast_value_t value_new_bool(int value);
-ast_value_t value_new_text(char *value);
-ast_value_t value_new_empty();
+    // Global (node)
+    func_declaration, // First child is internal
 
-void value_free(ast_value_t value);
-
-typedef enum ast_node_type {
-    noop,
-    func_declaration,
-
+    // Statements (node)
     statement_decl,
     statement_attr,
-    statement_call,
+    statement_call, // First child is internal
     statement_return,
     statement_if,
     statement_while,
 
+    // Expressions (node)
     expr_not,
     expr_inv,
     expr_mult,
@@ -66,31 +39,44 @@ typedef enum ast_node_type {
     expr_and,
     expr_or,
 
+    // Literals (leaf)
     lit_int_type,
     lit_float_type,
     lit_bool_type,
-    lit_ident_type,
-} ast_node_type_t;
+    ident,
+} ast_type_t;
+
+struct ast;
+
+typedef union {
+    struct {
+        int n;
+        struct ast **children;
+    } node;
+    lexeme_t leaf;
+} ast_body_t;
 
 typedef struct ast {
-    ast_node_type_t type;
-    ast_value_t value;
-    int n;
-    struct ast **children;
+    ast_type_t type;
+    ast_body_t body;
 } ast_t;
 
-ast_t *ast_new(ast_node_type_t type, ast_value_t value);
+/* ################
+ * # Constructors #
+ * ################ */
+ast_t *ast_make_node(ast_type_t type);
+ast_t *ast_make_leaf(ast_type_t type, lexeme_t lexeme);
 
-ast_t *ast_new_empty(ast_node_type_t type);
-
-ast_t *ast_new_noop(char* message);
-
-void ast_add_child(ast_t *parent, ast_t *child);
-
+/* ###############
+ * # Destructors #
+ * ############### */
 void ast_free(ast_t *ast);
 
-char *ast_node_type_name(ast_node_type_t type);
+/* ###########
+ * # Methods #
+ * ########### */
+void ast_append(ast_t *ast, ast_t *child);
 
-void ast_value_label(ast_value_t value, char buf[]);
+char *ast_node_type_name(ast_type_t type);
 
 #endif // !AST

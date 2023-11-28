@@ -1,4 +1,3 @@
 (int x) >= int! funcao {
-	func(1, 2, 3);
 }
 

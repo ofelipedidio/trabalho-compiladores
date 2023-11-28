@@ -22,12 +22,15 @@ extern void *arvore;
 
 %}
 
-%code requires { #include "ast.h" }
+%code requires { 
+#include "ast.h"
+#include "lexeme.h"
+}
 
 %start programa
 
 %union {
-    ast_value_t value;
+    lexeme_t lexeme;
     ast_t *node;
 }
 
@@ -44,11 +47,11 @@ extern void *arvore;
 %token TK_OC_NE
 %token TK_OC_AND
 %token TK_OC_OR
-%token<value> TK_IDENTIFICADOR
-%token<value> TK_LIT_INT
-%token<value> TK_LIT_FLOAT
-%token<value> TK_LIT_FALSE
-%token<value> TK_LIT_TRUE
+%token<lexeme> TK_IDENTIFICADOR
+%token<lexeme> TK_LIT_INT
+%token<lexeme> TK_LIT_FLOAT
+%token<lexeme> TK_LIT_FALSE
+%token<lexeme> TK_LIT_TRUE
 %token TK_ERRO
 
 %type<node> programa
@@ -88,15 +91,15 @@ programa: { };
 global_definition: global_variable_definition { /* NOOP */ };
 global_definition: global_function_definition { $$ = $1; };
 global_definition: global_definition global_variable_definition { $$ = $1; };
-global_definition: global_definition global_function_definition { ast_add_child($1, $2); $$ = $1;};
+global_definition: global_definition global_function_definition { ast_append($1, $2); $$ = $1;};
 
 global_variable_definition: type global_variable_definition_names ';' { /* NOOP */ };
 
 global_variable_definition_names: identifier { ast_free($1); /* NOOP */ };
 global_variable_definition_names: global_variable_definition_names ',' identifier { ast_free($3); /* NOOP */ };
 
-global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' TK_IDENTIFICADOR block { $$ = ast_new(func_declaration, $7); ast_add_child($$, $8); };
-global_function_definition: '('                           ')' TK_OC_GE type '!' TK_IDENTIFICADOR block { $$ = ast_new(func_declaration, $6); ast_add_child($$, $7); };
+global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $7); ast_append($$, $8); };
+global_function_definition: '('                           ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $6); ast_append($$, $7); };
 
 parameter_list_definition: parameter_definition { /* NOOP */ };
 parameter_list_definition: parameter_list_definition ',' parameter_definition { /* NOOP */ };
@@ -104,12 +107,12 @@ parameter_list_definition: parameter_list_definition ',' parameter_definition { 
 parameter_definition: type identifier { ast_free($2); /* NOOP */ };
 
 block: '{' block_body '}' { $$ = $2; };
-block: '{'            '}' { $$ = ast_new_noop("empty_block"); };
+block: '{'            '}' { $$ = ast_make_node(noop); };
 
 block_body: command ';' { $$ = $1; };
-block_body: command ';' block_body { if ($1->type == noop) { $$ = $3; } else if ($3->type == noop) { $$ = $1; } else { ast_add_child($1, $3); $$ = $1; } };
+block_body: command ';' block_body { if ($1->type != noop) {ast_append($1, $3); $$ = $1;} else {ast_free($1); $$ = $3; } };
 
-command: variable_declaration { /* NOOP */ };
+command: variable_declaration { $$ = ast_make_node(noop); };
 command: variable_attribution { $$ = $1; };
 command: function_call { $$ = $1; };
 command: return_statement { $$ = $1; };
@@ -122,51 +125,51 @@ variable_declaration: type variable_names { /* NOOP */ };
 variable_names: identifier { ast_free($1); /* NOOP */ };
 variable_names: variable_names ',' identifier { ast_free($3); /* NOOP */ };
 
-variable_attribution: identifier '=' expression { $$ = ast_new_empty(statement_attr); ast_add_child($$, $1); ast_add_child($$, $3); };
+variable_attribution: identifier '=' expression { $$ = ast_make_node(statement_attr); ast_append($$, $1); ast_append($$, $3); };
 
-function_call: TK_IDENTIFICADOR '(' parameter_list ')' { $$ = ast_new(statement_call, $1); ast_add_child($$, $3); };
-function_call: TK_IDENTIFICADOR '('                ')' { $$ = ast_new(statement_call, $1); ast_add_child($$, ast_new_noop("empty_call")); };
+function_call: identifier '(' parameter_list ')' { $$ = ast_make_node(statement_call); ast_append($$, $1); ast_append($$, $3); };
+function_call: identifier '('                ')' { $$ = ast_make_node(statement_call); ast_append($$, $1); ast_append($$, ast_make_node(noop)); };
 
-parameter_list: expression { $$ = $1; };
-parameter_list: expression ',' parameter_list  { ast_add_child($1, $3); $$ = $1; };
+parameter_list: expression { $$ = ast_make_node(call_argument); ast_append($$, $1); };
+parameter_list: expression ',' parameter_list  { ast_append($1, $3); $$ = $1; };
 
-return_statement: TK_PR_RETURN expression { $$ = ast_new_empty(statement_return); ast_add_child($$, $2); };
+return_statement: TK_PR_RETURN expression { $$ = ast_make_node(statement_return); ast_append($$, $2); };
 
-if_statement: TK_PR_IF '(' expression ')' block { $$ = ast_new_empty(statement_if); ast_add_child($$, $3); ast_add_child($$, $5); ast_add_child($$, ast_new_noop("else_block")); };
-if_statement: TK_PR_IF '(' expression ')' block TK_PR_ELSE block { $$ = ast_new_empty(statement_if); ast_add_child($$, $3); ast_add_child($$, $5); ast_add_child($$, $7); };
+if_statement: TK_PR_IF '(' expression ')' block TK_PR_ELSE block { $$ = ast_make_node(statement_if); ast_append($$, $3); ast_append($$, $5); ast_append($$, $7); };
+if_statement: TK_PR_IF '(' expression ')' block                  { $$ = ast_make_node(statement_if); ast_append($$, $3); ast_append($$, $5); ast_append($$, ast_make_node(noop)); };
 
-while_statement: TK_PR_WHILE '(' expression ')' block { $$ = ast_new_empty(statement_while); ast_add_child($$, $3); ast_add_child($$, $5); };
+while_statement: TK_PR_WHILE '(' expression ')' block { $$ = ast_make_node(statement_while); ast_append($$, $3); ast_append($$, $5); };
 
 expression: expr_1 { $$ = $1; };
 
 expr_1: expr_2 { $$ = $1; };
-expr_1: '-' expr_1 { $$ = ast_new_empty(expr_inv); ast_add_child($$, $2); };
-expr_1: '!' expr_1 { $$ = ast_new_empty(expr_not); ast_add_child($$, $2); };
+expr_1: '-' expr_1 { $$ = ast_make_node(expr_inv); ast_append($$, $2); };
+expr_1: '!' expr_1 { $$ = ast_make_node(expr_not); ast_append($$, $2); };
 
 expr_2: expr_3 { $$ = $1; };
-expr_2: expr_2 '*' expr_3 { $$ = ast_new_empty(expr_mult); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_2: expr_2 '/' expr_3 { $$ = ast_new_empty(expr_div); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_2: expr_2 '%' expr_3 { $$ = ast_new_empty(expr_mod); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_2: expr_2 '*' expr_3 { $$ = ast_make_node(expr_mult); ast_append($$, $1); ast_append($$, $3);};
+expr_2: expr_2 '/' expr_3 { $$ = ast_make_node(expr_div); ast_append($$, $1); ast_append($$, $3);};
+expr_2: expr_2 '%' expr_3 { $$ = ast_make_node(expr_mod); ast_append($$, $1); ast_append($$, $3);};
 
 expr_3: expr_4 { $$ = $1; };
-expr_3: expr_3 '+' expr_4 { $$ = ast_new_empty(expr_add); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_3: expr_3 '-' expr_4 { $$ = ast_new_empty(expr_sub); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_3: expr_3 '+' expr_4 { $$ = ast_make_node(expr_add); ast_append($$, $1); ast_append($$, $3);};
+expr_3: expr_3 '-' expr_4 { $$ = ast_make_node(expr_sub); ast_append($$, $1); ast_append($$, $3);};
 
 expr_4: expr_5 { $$ = $1; };
-expr_4: expr_4 '<' expr_5 { $$ = ast_new_empty(expr_lt); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_4: expr_4 '>' expr_5 { $$ = ast_new_empty(expr_gt); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_4: expr_4 TK_OC_LE expr_5 { $$ = ast_new_empty(expr_le); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_4: expr_4 TK_OC_GE expr_5 { $$ = ast_new_empty(expr_ge); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_4: expr_4 '<' expr_5 { $$ = ast_make_node(expr_lt); ast_append($$, $1); ast_append($$, $3);};
+expr_4: expr_4 '>' expr_5 { $$ = ast_make_node(expr_gt); ast_append($$, $1); ast_append($$, $3);};
+expr_4: expr_4 TK_OC_LE expr_5 { $$ = ast_make_node(expr_le); ast_append($$, $1); ast_append($$, $3);};
+expr_4: expr_4 TK_OC_GE expr_5 { $$ = ast_make_node(expr_ge); ast_append($$, $1); ast_append($$, $3);};
 
 expr_5: expr_6 { $$ = $1; };
-expr_5: expr_5 TK_OC_EQ expr_6 { $$ = ast_new_empty(expr_eq); ast_add_child($$, $1); ast_add_child($$, $3);};
-expr_5: expr_5 TK_OC_NE expr_6 { $$ = ast_new_empty(expr_ne); ast_add_child($$, $1); ast_add_child($$, $3);} 
+expr_5: expr_5 TK_OC_EQ expr_6 { $$ = ast_make_node(expr_eq); ast_append($$, $1); ast_append($$, $3);};
+expr_5: expr_5 TK_OC_NE expr_6 { $$ = ast_make_node(expr_ne); ast_append($$, $1); ast_append($$, $3);} 
 
 expr_6: expr_7 { $$ = $1; };
-expr_6: expr_6 TK_OC_AND expr_7 { $$ = ast_new_empty(expr_and); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_6: expr_6 TK_OC_AND expr_7 { $$ = ast_make_node(expr_and); ast_append($$, $1); ast_append($$, $3);};
 
 expr_7: expr_8 { $$ = $1; };
-expr_7: expr_7 TK_OC_OR expr_8 { $$ = ast_new_empty(expr_or); ast_add_child($$, $1); ast_add_child($$, $3);};
+expr_7: expr_7 TK_OC_OR expr_8 { $$ = ast_make_node(expr_or); ast_append($$, $1); ast_append($$, $3);};
 
 expr_8: '(' expression ')' { $$ = $2; };
 expr_8: identifier { $$ = $1; };
@@ -177,12 +180,12 @@ type: TK_PR_INT { };
 type: TK_PR_FLOAT { };
 type: TK_PR_BOOL { };
 
-identifier: TK_IDENTIFICADOR { $$ = ast_new(lit_ident_type, $1); };
+identifier: TK_IDENTIFICADOR { $$ = ast_make_leaf(ident, $1); };
 
-literal: TK_LIT_INT { $$ = ast_new(lit_int_type, $1); };
-literal: TK_LIT_FLOAT { $$ = ast_new(lit_float_type, $1); };
-literal: TK_LIT_TRUE { $$ = ast_new(lit_bool_type, $1); };
-literal: TK_LIT_FALSE { $$ = ast_new(lit_bool_type, $1); };
+literal: TK_LIT_INT { $$ = ast_make_leaf(lit_int_type, $1); };
+literal: TK_LIT_FLOAT { $$ = ast_make_leaf(lit_float_type, $1); };
+literal: TK_LIT_TRUE { $$ = ast_make_leaf(lit_bool_type, $1); };
+literal: TK_LIT_FALSE { $$ = ast_make_leaf(lit_bool_type, $1); };
 
 %%
 

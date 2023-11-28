@@ -5,111 +5,128 @@
 #include <stdio.h>
 #include <string.h>
 
-ast_value_t value_new_int(long long int value) {
-    ast_value_t v;
-    v.lit_int.type = lit_int_t;
-    v.lit_int.value = value;
-    return v;
-}
 
-ast_value_t value_new_float(double value) {
-    ast_value_t v;
-    v.lit_float.type = lit_float_t;
-    v.lit_float.value = value;
-    return v;
-}
-
-ast_value_t value_new_bool(int value) {
-    ast_value_t v;
-    v.lit_bool.type = lit_bool_t;
-    v.lit_bool.value = value;
-    return v;
-}
-
-ast_value_t value_new_text(char *value) {
-    ast_value_t v;
-    v.text.type = text_t;
-    v.text.value = value;
-    return v;
-}
-
-ast_value_t value_new_empty() {
-    ast_value_t v;
-    v.empty.type = empty_t;
-    return v;
-}
-
-void value_free(ast_value_t value) {
-    switch (value.empty.type) {
-        case text_t:
-            free(value.text.value);
+/* ################
+ * # Constructors #
+ * ################ */
+ast_t *ast_make_node(ast_type_t type) {
+    switch (type) {
+        case lit_int_type:
+        case lit_float_type:
+        case lit_bool_type:
+        case ident:
+            fprintf(stderr, "Tried to initialize a node with a literal/identifier\n");
+            exit(EXIT_FAILURE);
             break;
         default:
             break;
     }
-}
 
-ast_t *ast_new(ast_node_type_t type, ast_value_t value) {
     ast_t *ast = (ast_t*) malloc(sizeof(ast_t));
     if (ast == NULL) {
-        free(ast);
-        fprintf(stderr, "Failed to allocate memory for a new AST\n");
-        exit(EXIT_FAILURE);
+            fprintf(stderr, "Could not allocate memory for ast_t (node)");
+            exit(EXIT_FAILURE);
+            return NULL;
     }
 
     ast->type = type;
-    ast->value = value;
-    ast->n = 0;
-    ast->children = (ast_t**) calloc(0, sizeof(ast_t*));
-
-    if (ast->children == NULL) {
-        free(ast->children);
+    ast->body.node.n = 0;
+    ast->body.node.children = (ast_t**) malloc(0*sizeof(ast_t*));
+    
+    if (ast->body.node.children == NULL) {
         free(ast);
-        fprintf(stderr, "Failed to allocate memory for a new child pointer array\n");
+        fprintf(stderr, "Could not allocate memory for ast_t children array");
         exit(EXIT_FAILURE);
+        return NULL;
     }
 
     return ast;
 }
 
-ast_t *ast_new_empty(ast_node_type_t type) {
-    return ast_new(type, value_new_empty());
+ast_t *ast_make_leaf(ast_type_t type, lexeme_t lexeme) {
+    switch (type) {
+        case lit_int_type:
+        case lit_float_type:
+        case lit_bool_type:
+        case ident:
+            break;
+        default:
+            fprintf(stderr, "Tried to initialize a leaf with something other than literal/identifier\n");
+            exit(EXIT_FAILURE);
+            break;
+    }
+
+    ast_t *ast = (ast_t*) malloc(sizeof(ast_t));
+    if (ast == NULL) {
+            fprintf(stderr, "Could not allocate memory for ast_t (leaf)");
+            exit(EXIT_FAILURE);
+            return NULL;
+    }
+
+    ast->type = type;
+    ast->body.leaf = lexeme;
+
+    return ast;
 }
 
-ast_t *ast_new_noop(char *message) {
-    return ast_new(noop, value_new_text(strdup(message)));
+/* ###############
+ * # Destructors #
+ * ############### */
+void ast_free(ast_t *ast) {
+    switch (ast->type) {
+        case lit_int_type:
+        case lit_float_type:
+        case lit_bool_type:
+        case ident:
+            lexeme_free(ast->body.leaf);
+            break;
+        default:
+            for (int i = 0; i < ast->body.node.n; i++) {
+                ast_free(ast->body.node.children[i]);
+            }
+            free(ast->body.node.children);
+            break;
+    }
+    free(ast);
 }
 
-void ast_add_child(ast_t *parent, ast_t *child) {
+/* ###########
+ * # Methods #
+ * ########### */
+void ast_append(ast_t *ast, ast_t *child) {
+    switch (ast->type) {
+        case lit_int_type:
+        case lit_float_type:
+        case lit_bool_type:
+        case ident:
+            free(child);
+            fprintf(stderr, "Tried to append to a leaf node of the ast\n");
+            exit(EXIT_FAILURE);
+            return;
+        default:
+            break;
+    }
+
     if (child->type == noop) {
         ast_free(child);
         return;
     }
 
-    ast_t **children = (ast_t**) realloc(parent->children, (parent->n+1) * sizeof(ast_t*));
-    if (children == NULL) {
-        fprintf(stderr, "Failed to allocate memory for a new child pointer\n");
+    ast_t **new_children = (ast_t**) realloc(
+            ast->body.node.children, (ast->body.node.n+1)*sizeof(ast_t*));
+    if (new_children == NULL) {
+        free(child);
+        fprintf(stderr, "Could not reallocate memory for new with child\n");
         exit(EXIT_FAILURE);
+        return;
     }
-    parent->children = children;
-    parent->children[parent->n++] = child;
+
+    new_children[ast->body.node.n] = child;
+    ast->body.node.children = new_children;
+    ast->body.node.n += 1;
 }
 
-void ast_free(ast_t *ast) {
-    if (ast == NULL) {
-        fprintf(stderr, "Tried to free a null AST\n");
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < ast->n; i++) {
-        ast_free(ast->children[i]);
-    }
-    value_free(ast->value);
-    free(ast->children);
-    free(ast);
-}
-
-char *ast_node_type_name(ast_node_type_t type) {
+char *ast_node_type_name(ast_type_t type) {
     switch (type) {
         case noop:
             return "noop";
@@ -165,30 +182,10 @@ char *ast_node_type_name(ast_node_type_t type) {
             return "lit_float_type";
         case lit_bool_type:
             return "lit_bool_type";
-        case lit_ident_type:
+        case ident:
             return "lit_ident_type";
         
         default:
             return "<unidentified>";
-    }
-}
-
-void ast_value_label(ast_value_t value, char buf[]) {
-    switch(value.empty.type) {
-        case lit_int_t:
-            sprintf(buf, "%lld", value.lit_int.value);
-            break;
-        case lit_float_t:
-            sprintf(buf, "%f", value.lit_float.value);
-            break;
-        case lit_bool_t:
-            sprintf(buf, "%s", value.lit_bool.value ? "true" : "false");
-            break;
-        case text_t:
-            sprintf(buf, "%s", value.text.value);
-            break;
-        case empty_t:
-            sprintf(buf, "%lld", value.lit_int.value);
-            break;
     }
 }

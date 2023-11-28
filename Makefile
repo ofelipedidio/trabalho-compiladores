@@ -9,8 +9,8 @@
 ETAPA=etapa3
 CC=gcc
 CFLAGS=-fsanitize=address -g
-DEPS=parser.tab.h ast.h
-OBJ=lex.yy.o main.o parser.tab.o ast.o
+DEPS=parser.tab.h ast.h lexeme.h
+OBJ=lex.yy.o main.o parser.tab.o ast.o lexeme.o
 
 all: clean $(ETAPA)
 
