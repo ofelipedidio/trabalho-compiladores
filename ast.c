@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "lexeme.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,6 +74,10 @@ ast_t *ast_make_leaf(ast_type_t type, lexeme_t lexeme) {
  * # Destructors #
  * ############### */
 void ast_free(ast_t *ast) {
+    if (ast == NULL) {
+        return;
+    }
+
     switch (ast->type) {
         case lit_int_type:
         case lit_float_type:
@@ -99,8 +104,11 @@ void ast_append(ast_t *ast, ast_t *child) {
         case lit_float_type:
         case lit_bool_type:
         case ident:
-            free(child);
+            ast_free(child);
             fprintf(stderr, "Tried to append to a leaf node of the ast\n");
+            fprintf(stderr, "- Parent: ");
+            lexeme_to_string(ast->body.leaf, stderr);
+            fprintf(stderr, "\n");
             exit(EXIT_FAILURE);
             return;
         default:

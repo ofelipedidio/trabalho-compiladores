@@ -88,10 +88,10 @@ extern void *arvore;
 programa: global_definition { $$ = $1; arvore = $$; };
 programa: { };
 
-global_definition: global_variable_definition { /* NOOP */ };
+global_definition: global_variable_definition { $$ = ast_make_node(noop); };
 global_definition: global_function_definition { $$ = $1; };
 global_definition: global_definition global_variable_definition { $$ = $1; };
-global_definition: global_definition global_function_definition { ast_append($1, $2); $$ = $1;};
+global_definition: global_definition global_function_definition { if ($1 != NULL && $1->type != noop) { ast_append($1, $2); $$ = $1; } else { ast_free($1); $$ = $2; } };
 
 global_variable_definition: type global_variable_definition_names ';' { /* NOOP */ };
 
@@ -131,7 +131,7 @@ function_call: identifier '(' parameter_list ')' { $$ = ast_make_node(statement_
 function_call: identifier '('                ')' { $$ = ast_make_node(statement_call); ast_append($$, $1); ast_append($$, ast_make_node(noop)); };
 
 parameter_list: expression { $$ = ast_make_node(call_argument); ast_append($$, $1); };
-parameter_list: expression ',' parameter_list  { ast_append($1, $3); $$ = $1; };
+parameter_list: expression ',' parameter_list  { $$ = ast_make_node(call_argument); ast_append($$, $1); ast_append($$, $3); };
 
 return_statement: TK_PR_RETURN expression { $$ = ast_make_node(statement_return); ast_append($$, $2); };
 
