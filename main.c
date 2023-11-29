@@ -11,8 +11,6 @@
 #include "ast.h"
 #include "lexeme.h"
 
-char buffer[1024];
-
 extern int yyparse(void);
 extern int yylex_destroy(void);
 
@@ -21,9 +19,9 @@ void exporta (void *arvore);
 
 int recr_print_lines[1024];
 
-void recr_print(ast_t *node, int depth);
+void debug_print(ast_t *node, int depth);
 
-void recr_print(ast_t *node, int depth) {
+void debug_print(ast_t *node, int depth) {
     fprintf(stderr, "%s", ast_node_type_name(node->type));
     switch (node->type) {
         case lit_int_type:
@@ -42,13 +40,17 @@ void recr_print(ast_t *node, int depth) {
                 }
                 recr_print_lines[depth] = i + 1 != node->body.node.n;
                 fprintf(stderr, (i + 1 == node->body.node.n) ? "└─" : "├─");
-                recr_print(node->body.node.children[i], depth+1);
+                debug_print(node->body.node.children[i], depth+1);
             }
             break;
     }
 }
 
 void exporta (void *arvore) {
+    if (arvore == NULL) {
+        return;
+    }
+
     ast_t *ast = (ast_t*) arvore;
 
     switch (ast->type) {
@@ -105,10 +107,10 @@ void exporta (void *arvore) {
             fprintf(stdout, "%p [label=\">\"]\n", ast);
             break;
         case expr_le:
-            fprintf(stdout, "%p [label=\">=\"]\n", ast);
+            fprintf(stdout, "%p [label=\"<=\"]\n", ast);
             break;
         case expr_ge:
-            fprintf(stdout, "%p [label=\"ge\"]\n", ast);
+            fprintf(stdout, "%p [label=\">=\"]\n", ast);
             break;
         case expr_eq:
             fprintf(stdout, "%p [label=\"==\"]\n", ast);
@@ -198,10 +200,7 @@ int main (int argc, char **argv)
 
     ast_t *tree = (ast_t*) arvore;
     if (tree != NULL) {
-        recr_print(tree, 0);
         ast_free(tree);
-    } else {
-        printf("<empty ast> (no functions parsed)\n");
     }
 
     return ret;
