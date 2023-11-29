@@ -78,7 +78,7 @@ extern void *arvore;
 %type<node> expr_5 
 %type<node> expr_6 
 %type<node> expr_7 
-%type<node> expr_8 
+%type<node> expr_v 
 
 %type<node> literal
 %type<node> identifier
@@ -140,41 +140,41 @@ if_statement: TK_PR_IF '(' expression ')' block                  { $$ = ast_make
 
 while_statement: TK_PR_WHILE '(' expression ')' block { $$ = ast_make_node(statement_while); ast_append($$, $3); ast_append($$, $5); };
 
-expression: expr_1 { $$ = $1; };
+expression: expr_7 { $$ = $1; };
 
-expr_1: expr_2 { $$ = $1; };
+expr_1: expr_v { $$ = $1; };
 expr_1: '-' expr_1 { $$ = ast_make_node(expr_inv); ast_append($$, $2); };
 expr_1: '!' expr_1 { $$ = ast_make_node(expr_not); ast_append($$, $2); };
 
-expr_2: expr_3 { $$ = $1; };
-expr_2: expr_2 '*' expr_3 { $$ = ast_make_node(expr_mult); ast_append($$, $1); ast_append($$, $3);};
-expr_2: expr_2 '/' expr_3 { $$ = ast_make_node(expr_div); ast_append($$, $1); ast_append($$, $3);};
-expr_2: expr_2 '%' expr_3 { $$ = ast_make_node(expr_mod); ast_append($$, $1); ast_append($$, $3);};
+expr_2: expr_1 { $$ = $1; };
+expr_2: expr_2 '*' expr_1 { $$ = ast_make_node(expr_mult); ast_append($$, $1); ast_append($$, $3);};
+expr_2: expr_2 '/' expr_1 { $$ = ast_make_node(expr_div); ast_append($$, $1); ast_append($$, $3);};
+expr_2: expr_2 '%' expr_1 { $$ = ast_make_node(expr_mod); ast_append($$, $1); ast_append($$, $3);};
 
-expr_3: expr_4 { $$ = $1; };
-expr_3: expr_3 '+' expr_4 { $$ = ast_make_node(expr_add); ast_append($$, $1); ast_append($$, $3);};
-expr_3: expr_3 '-' expr_4 { $$ = ast_make_node(expr_sub); ast_append($$, $1); ast_append($$, $3);};
+expr_3: expr_2 { $$ = $1; };
+expr_3: expr_3 '+' expr_2 { $$ = ast_make_node(expr_add); ast_append($$, $1); ast_append($$, $3);};
+expr_3: expr_3 '-' expr_2 { $$ = ast_make_node(expr_sub); ast_append($$, $1); ast_append($$, $3);};
 
-expr_4: expr_5 { $$ = $1; };
-expr_4: expr_4 '<' expr_5 { $$ = ast_make_node(expr_lt); ast_append($$, $1); ast_append($$, $3);};
-expr_4: expr_4 '>' expr_5 { $$ = ast_make_node(expr_gt); ast_append($$, $1); ast_append($$, $3);};
-expr_4: expr_4 TK_OC_LE expr_5 { $$ = ast_make_node(expr_le); ast_append($$, $1); ast_append($$, $3);};
-expr_4: expr_4 TK_OC_GE expr_5 { $$ = ast_make_node(expr_ge); ast_append($$, $1); ast_append($$, $3);};
+expr_4: expr_3 { $$ = $1; };
+expr_4: expr_4 '<' expr_3 { $$ = ast_make_node(expr_lt); ast_append($$, $1); ast_append($$, $3);};
+expr_4: expr_4 '>' expr_3 { $$ = ast_make_node(expr_gt); ast_append($$, $1); ast_append($$, $3);};
+expr_4: expr_4 TK_OC_LE expr_3 { $$ = ast_make_node(expr_le); ast_append($$, $1); ast_append($$, $3);};
+expr_4: expr_4 TK_OC_GE expr_3 { $$ = ast_make_node(expr_ge); ast_append($$, $1); ast_append($$, $3);};
 
-expr_5: expr_6 { $$ = $1; };
-expr_5: expr_5 TK_OC_EQ expr_6 { $$ = ast_make_node(expr_eq); ast_append($$, $1); ast_append($$, $3);};
-expr_5: expr_5 TK_OC_NE expr_6 { $$ = ast_make_node(expr_ne); ast_append($$, $1); ast_append($$, $3);} 
+expr_5: expr_4 { $$ = $1; };
+expr_5: expr_5 TK_OC_EQ expr_4 { $$ = ast_make_node(expr_eq); ast_append($$, $1); ast_append($$, $3);};
+expr_5: expr_5 TK_OC_NE expr_4 { $$ = ast_make_node(expr_ne); ast_append($$, $1); ast_append($$, $3);} 
 
-expr_6: expr_7 { $$ = $1; };
-expr_6: expr_6 TK_OC_AND expr_7 { $$ = ast_make_node(expr_and); ast_append($$, $1); ast_append($$, $3);};
+expr_6: expr_5 { $$ = $1; };
+expr_6: expr_6 TK_OC_AND expr_5 { $$ = ast_make_node(expr_and); ast_append($$, $1); ast_append($$, $3);};
 
-expr_7: expr_8 { $$ = $1; };
-expr_7: expr_7 TK_OC_OR expr_8 { $$ = ast_make_node(expr_or); ast_append($$, $1); ast_append($$, $3);};
+expr_7: expr_6 { $$ = $1; };
+expr_7: expr_7 TK_OC_OR expr_6 { $$ = ast_make_node(expr_or); ast_append($$, $1); ast_append($$, $3);};
 
-expr_8: '(' expression ')' { $$ = $2; };
-expr_8: identifier { $$ = $1; };
-expr_8: literal { $$ = $1; };
-expr_8: function_call { $$ = $1; };
+expr_v: '(' expression ')' { $$ = $2; };
+expr_v: identifier { $$ = $1; };
+expr_v: literal { $$ = $1; };
+expr_v: function_call { $$ = $1; };
 
 type: TK_PR_INT { };
 type: TK_PR_FLOAT { };
