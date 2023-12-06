@@ -1,22 +1,22 @@
 # Porto Alegre, Novembro de 2023
 # INF01147 - Compiladores
-#
+# 
 # Grupo B
 # Felipe Souza Didio - 00323392
 # Pedro Company Beck - 00324055
 #
 
-ETAPA=etapa2
+ETAPA=etapa3
 CC=gcc
-CFLAGS=-I.
-DEPS=parser.tab.h
-OBJ=lex.yy.o main.o parser.tab.o
+# CFLAGS=-fsanitize=address,leak -g
+CFLAGS=
+DEPS=parser.tab.h ast.h lexeme.h
+OBJ=lex.yy.o main.o parser.tab.o ast.o lexeme.o
 
 all: clean $(ETAPA)
 
 lex.yy.c:
 	flex scanner.l
-
 parser.tab.c:
 	bison -d parser.y
 
@@ -24,10 +24,10 @@ parser.tab.h:
 	bison -d parser.y
 
 %.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(ETAPA): $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^
 
 run: $(ETAPA)
 	./$(ETAPA)

@@ -1,5 +1,0 @@
-//INCORRECT
-(int a) >= int ! f
-{
-  c<5^a> = 3 * f(a) + a;
-}

@@ -1,3 +1,0 @@
-// This fails because there is a ',' after the parameter list
-(int x,) >= int ! func {
-}

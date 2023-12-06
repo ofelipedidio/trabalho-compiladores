@@ -1,5 +1,0 @@
-//CORRECT
-(bool param) >= int ! func
-{
-  return 0;
-}

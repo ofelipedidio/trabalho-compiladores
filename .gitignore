@@ -12,3 +12,6 @@ parser.tab.h
 parser.tab.c
 .DS_STORE
 test/program
+input.txt
+output.txt
+output.xdot
