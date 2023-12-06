@@ -1,6 +1,0 @@
-//INCORRECT
-(int a, int b) >= int ! f
-{
-  int x;
-  f(x, .);
-}

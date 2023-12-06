@@ -90,8 +90,8 @@ programa: { };
 
 global_definition: global_variable_definition { $$ = ast_make_node(noop); };
 global_definition: global_function_definition { $$ = $1; };
-global_definition: global_definition global_variable_definition { $$ = $1; };
-global_definition: global_definition global_function_definition { if ($1 != NULL && $1->type != noop) { ast_append($1, $2); $$ = $1; } else { ast_free($1); $$ = $2; } };
+global_definition: global_variable_definition global_definition { $$ = $2; };
+global_definition: global_function_definition global_definition { if ($2 != NULL && $2->type != noop) { ast_append($1, $2); } $$ = $1; };
 
 global_variable_definition: type global_variable_definition_names ';' { /* NOOP */ };
 

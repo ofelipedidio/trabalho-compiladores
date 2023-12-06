@@ -1,5 +1,0 @@
-//INCORRECT
-(int param) >= int ! func
-{
-    char teste <= 'a';
-}
