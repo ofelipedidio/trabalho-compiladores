@@ -9,7 +9,7 @@
 typedef enum {
     // Internal (node)
     noop, // Completely removed from ast
-    call_argument, // Actls like a leaf linked list struct(leaf, next)
+    call_argument, // Acts like a leaf linked list struct(leaf, next)
 
     // Global (node)
     func_declaration, // First child is internal
