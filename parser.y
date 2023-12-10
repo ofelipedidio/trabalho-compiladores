@@ -20,11 +20,14 @@ extern int get_line_number(void);
 extern int get_col_number(void);
 extern void *arvore;
 
+sym_tab_t *current_scope = sym_tab_init();
+
 %}
 
 %code requires { 
 #include "ast.h"
 #include "lexeme.h"
+#include "symbols.h"
 }
 
 %start programa
@@ -84,30 +87,36 @@ extern void *arvore;
 %type<node> identifier
 
 %%
+open_block: %empty;
+close_block: %empty;
 
-programa: global_definition { $$ = $1; arvore = $$; };
-programa: { };
+programa: open_block global_definition close_block { $$ = $1; arvore = $$; };
+programa: open_block close_block { };
 
 global_definition: global_variable_definition { $$ = ast_make_node(noop); };
 global_definition: global_function_definition { $$ = $1; };
 global_definition: global_variable_definition global_definition { $$ = $2; };
 global_definition: global_function_definition global_definition { if ($2 != NULL && $2->type != noop) { ast_append($1, $2); } $$ = $1; };
 
-global_variable_definition: type global_variable_definition_names ';' { /* NOOP */ };
+global_variable_definition: global_variable_definition_type global_variable_definition_names ';' { /* NOOP */ };
+global_variable_definition_type: type { current_type = $1; };
+global_variable_definition_names: identifier { sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL});};
 
-global_variable_definition_names: identifier { ast_free($1); /* NOOP */ };
-global_variable_definition_names: global_variable_definition_names ',' identifier { ast_free($3); /* NOOP */ };
+global_variable_definition_names: global_variable_definition_names ',' identifier {
+    if (!sym_tab_find())
+    sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL});
+};
 
-global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $7); ast_append($$, $8); };
-global_function_definition: '('                           ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $6); ast_append($$, $7); };
+global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $7); ast_append($$, $8); sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_func, current_type, identifier.lex}, NULL, NULL});};
+global_function_definition: '('                           ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $6); ast_append($$, $7); sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_func, current_type, identifier.lex}, NULL, NULL});};
 
 parameter_list_definition: parameter_definition { /* NOOP */ };
 parameter_list_definition: parameter_list_definition ',' parameter_definition { /* NOOP */ };
 
 parameter_definition: type identifier { ast_free($2); /* NOOP */ };
 
-block: '{' block_body '}' { $$ = $2; };
-block: '{'            '}' { $$ = ast_make_node(noop); };
+block: open_block '{' block_body '}' close_block { $$ = $2; };
+block: open_block '{'            '}' close_block { $$ = ast_make_node(noop); };
 
 block_body: command ';' { $$ = $1; };
 block_body: command ';' block_body { if ($1->type != noop) {ast_append($1, $3); $$ = $1;} else {ast_free($1); $$ = $3; } };
@@ -122,8 +131,8 @@ command: block { $$ = $1; };
 
 variable_declaration: type variable_names { /* NOOP */ };
 
-variable_names: identifier { ast_free($1); /* NOOP */ };
-variable_names: variable_names ',' identifier { ast_free($3); /* NOOP */ };
+variable_names: identifier { sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL}); };
+variable_names: variable_names ',' identifier { sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL}); };
 
 variable_attribution: identifier '=' expression { $$ = ast_make_node(statement_attr); ast_append($$, $1); ast_append($$, $3); };
 
