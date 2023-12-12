@@ -319,12 +319,9 @@ arguments_t *ast_arguments_new() {
 }
 
 return_t *ast_return_new(expression_t *expression) {
-    return_t *_return = (return_t *)malloc(sizeof(return_t));
+    return_t *_return = (return_t*) malloc(sizeof(return_t));
     if (_return == NULL) {
-        fprintf(stderr,
-                "Failed to allocate memory for return_t (errno = %d) [at file "
-                "\"" __FILE__ "\", line %d]\n",
-                errno, __LINE__ - 2);
+        fprintf(stderr, "Failed to allocate memory for return_t (errno = %d) [at file " "\"" __FILE__ "\", line %d]\n", errno, __LINE__ - 2);
         return NULL;
     }
     _return->expression = expression;
@@ -862,8 +859,8 @@ void *ast_global_export(global_t *global) {
 void *ast_function_export(function_t *function) {
     printf("%p [label=\"%s\"]\n", function, function->name->text);
     void *ptr = ast_block_export(function->body);
-    if (function->body->len > 0) {
-        printf("%p, %p", function, ptr);
+    if (ptr != NULL) {
+        printf("%p, %p\n", function, ptr);
     }
     return function;
 }
@@ -911,7 +908,7 @@ void *ast_attribution_export(attribution_t *attribution) {
 
 void *ast_call_export(call_t *call) {
     void *ptr;
-    printf("%p [call=\"call %s\"]\n", call, call->function_name->text);
+    printf("%p [label=\"call %s\"]\n", call, call->function_name->text);
     ptr = ast_arguments_export(call->arguments);
     if (ptr != NULL) {
         printf("%p, %p\n", call, ptr);
@@ -937,7 +934,7 @@ void *ast_arguments_export(arguments_t *arguments) {
 
 void *ast_return_export(return_t *_return) {
     void *ptr;
-    printf("%p [call=\"return\"]\n", _return);
+    printf("%p [label=\"return\"]\n", _return);
     ptr = ast_expression_export(_return->expression);
     printf("%p, %p\n", _return, ptr);
     return _return;
@@ -945,11 +942,13 @@ void *ast_return_export(return_t *_return) {
 
 void *ast_if_export(if_t *_if) {
     void *ptr;
-    printf("%p [call=\"if\"]\n", _if);
+    printf("%p [label=\"if\"]\n", _if);
     ptr = ast_expression_export(_if->condition);
     printf("%p, %p\n", _if, ptr);
     ptr = ast_block_export(_if->then_block);
-    printf("%p, %p\n", _if, ptr);
+    if (ptr != NULL) {
+        printf("%p, %p\n", _if, ptr);
+    }
     ptr = ast_block_export(_if->else_block);
     if (ptr != NULL) {
         printf("%p, %p\n", _if, ptr);
@@ -959,11 +958,13 @@ void *ast_if_export(if_t *_if) {
 
 void *ast_while_export(while_t *_while) {
     void *ptr;
-    printf("%p [call=\"while\"]\n", _while);
+    printf("%p [label=\"while\"]\n", _while);
     ptr = ast_expression_export(_while->condition);
     printf("%p, %p\n", _while, ptr);
     ptr = ast_block_export(_while->block);
-    printf("%p, %p\n", _while, ptr);
+    if (ptr != NULL) {
+        printf("%p, %p\n", _while, ptr);
+    }
     return _while;
 }
 
@@ -972,6 +973,7 @@ void *ast_block_export(block_t *block) {
     void *last_item = NULL;
     for (uint64_t i = 0; i < block->len; i++) {
         void *ptr = ast_command_export(block->commands[i]);
+        //fprintf(stderr, "ast_command_export returned %p\n", ptr);
         if (ptr != NULL) {
             if (last_item != NULL) {
                 printf("%p, %p\n", last_item, ptr);
@@ -999,14 +1001,62 @@ void *ast_expression_export(expression_t *expression) {
     }
 }
 
-void *ast_bin_op_export(bin_op_t *bin_op) {
-    // TODO
-    return NULL;
+char *bin_op_label(bin_op op) {
+    switch (op) {
+        case op_mul:
+            return "*";
+        case op_div:
+            return "/";
+        case op_mod:
+            return "%";
+        case op_add:
+            return "+";
+        case op_sub:
+            return "-";
+        case op_lt:
+            return "<";
+        case op_gt:
+            return ">";
+        case op_le:
+            return "<=";
+        case op_ge:
+            return ">=";
+        case op_eq:
+            return "==";
+        case op_ne:
+            return "!=";
+        case op_and:
+            return "&";
+        case op_or:
+            return "|";
+    }
 }
 
-void *ast_un_op_export(un_op_t *un_op) {
-    // TODO
-    return NULL;
+char *un_op_label(un_op op) {
+    switch (op) {
+        case op_inv:
+            return "-";
+        case op_not:
+            return "!";
+    }
+}
+
+void *ast_bin_op_export(bin_op_t *_bin_op) {
+    void *ptr;
+    printf("%p [label=\"%s\"]\n", _bin_op, bin_op_label(_bin_op->op));
+    ptr = ast_expression_export(_bin_op->left);
+    printf("%p, %p\n", _bin_op, ptr);
+    ptr = ast_expression_export(_bin_op->right);
+    printf("%p, %p\n", _bin_op, ptr);
+    return _bin_op;
+}
+
+void *ast_un_op_export(un_op_t *_un_op) {
+    void *ptr;
+    printf("%p [label=\"%s\"]\n", _un_op, un_op_label(_un_op->op));
+    ptr = ast_expression_export(_un_op->expression);
+    printf("%p, %p\n", _un_op, ptr);
+    return _un_op;
 }
 
 void *ast_literal_export(literal_t *literal) {
@@ -1039,7 +1089,7 @@ void *ast_bool_export(ast_bool_t *_bool) {
 }
 
 void *ast_identifier_export(identifier_t *identifier) {
-    printf("%p [label=\"%s\"]", identifier, identifier->text);
+    printf("%p [label=\"%s\"]\n", identifier, identifier->text);
     return identifier;
 }
 

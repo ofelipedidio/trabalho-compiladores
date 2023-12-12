@@ -197,6 +197,7 @@ void exporta (void *arvore) {
 int main (int argc, char **argv)
 {
     int ret = yyparse(); 
+    fprintf(stderr, "Reached main with code %d (arvore = %p)\n", ret, arvore);
     // exporta (arvore);
     yylex_destroy();
     if (ret != 0) {

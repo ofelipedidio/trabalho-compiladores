@@ -8,8 +8,8 @@
 
 ETAPA=etapa4
 CC=gcc
-CFLAGS=-fsanitize=address,leak -g
-# CFLAGS=
+#CFLAGS=-fsanitize=address,leak -g
+ CFLAGS=
 DEPS=parser.tab.h ast.h lexeme.h symbols.h semantics.h
 OBJ=lex.yy.o main.o parser.tab.o ast.o lexeme.o symbols.o semantics.o
 
