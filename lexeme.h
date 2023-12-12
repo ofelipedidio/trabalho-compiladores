@@ -42,6 +42,8 @@ lexeme_t make_lexeme_bool(int line, bool value);
 
 lexeme_t make_lexeme_ident(int line, char *value);
 
+lexeme_t lex_clone(lexeme_t lexeme);
+
 /* ###############
  * # Destructors #
  * ############### */

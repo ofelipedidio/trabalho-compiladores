@@ -17,7 +17,7 @@ for file in e3_tests/*; do
         else
             bat $file;
             echo "running"
-            ../etapa3 < $file > out.txt;
+            ../etapa4 < $file > out.txt;
             if [[ $? -eq 0 ]]; then
                 echo "converting"
                 ../output2dot.sh < out.txt > out.dot;

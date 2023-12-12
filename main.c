@@ -15,10 +15,11 @@ extern int yyparse(void);
 extern int yylex_destroy(void);
 
 void *arvore = NULL;
-void exporta (void *arvore);
+// void exporta (void *arvore);
 
 int recr_print_lines[1024];
 
+/*
 void debug_print(ast_t *node, int depth);
 
 void debug_print(ast_t *node, int depth) {
@@ -191,18 +192,23 @@ void exporta (void *arvore) {
         }
     }
 }
+*/
 
 int main (int argc, char **argv)
 {
     int ret = yyparse(); 
-    exporta (arvore);
+    // exporta (arvore);
     yylex_destroy();
-
-    ast_t *tree = (ast_t*) arvore;
-    if (tree != NULL) {
-        ast_free(tree);
+    if (ret != 0) {
+        return ret;
     }
 
-    return ret;
+    program_t *program = (program_t*) arvore;
+    if (program != NULL) {
+        ast_program_export(program);
+        ast_program_free(program);
+    }
+
+    return 0;
 }
 

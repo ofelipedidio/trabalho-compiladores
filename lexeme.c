@@ -1,4 +1,5 @@
 #include "lexeme.h"
+#include <string.h>
 
 /* ################
  * # Constructors #
@@ -33,6 +34,20 @@ lexeme_t make_lexeme_ident(int line, char *value) {
     lexeme.type = lex_ident;
     lexeme.value.ident = value;
     return lexeme;
+}
+
+lexeme_t lex_clone(lexeme_t lexeme) {
+    lexeme_t cloned;
+    cloned.line = lexeme.line;
+    cloned.type = lexeme.type;
+
+    if (lexeme.type == lex_ident) {
+        cloned.value.ident = strdup(lexeme.value.ident);
+    } else {
+        cloned.value = lexeme.value;
+    }
+
+    return cloned;
 }
 
 /* ###############
