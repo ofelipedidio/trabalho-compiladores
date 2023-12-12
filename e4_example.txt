@@ -1,9 +1,10 @@
+int zyx;
 () >= int ! aux {
     int x;
     { int y; };
     { int y; };
 }
-() >= int ! main {
+(int xyx) >= int ! main {
     int x;
     { int y; };
     { int y; };

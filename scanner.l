@@ -72,12 +72,12 @@ return {process_match(); return TK_PR_RETURN;}
 \&   {process_match(); return TK_OC_AND;}
 \|   {process_match(); return TK_OC_OR;}
 
-{digit}+           {process_match(); yylval.lexeme = yylval.lexeme = make_lexeme_int(get_line_number(), atoll(yytext)); return TK_LIT_INT;}
-{digit}*\.{digit}+ {process_match(); yylval.lexeme = make_lexeme_float(get_line_number(), atof(yytext));                return TK_LIT_FLOAT;}
-true               {process_match(); yylval.lexeme = make_lexeme_bool(get_line_number(), 1);                            return TK_LIT_TRUE;}
-false              {process_match(); yylval.lexeme = make_lexeme_bool(get_line_number(), 0);                            return TK_LIT_FALSE;}
+{digit}+           {process_match(); yylval.lexeme = yylval.lexeme = make_lexeme_int(get_line_number(), get_col_number(), atoll(yytext)); return TK_LIT_INT;}
+{digit}*\.{digit}+ {process_match(); yylval.lexeme = make_lexeme_float(get_line_number(), get_col_number(), atof(yytext));                return TK_LIT_FLOAT;}
+true               {process_match(); yylval.lexeme = make_lexeme_bool(get_line_number(), get_col_number(), 1);                            return TK_LIT_TRUE;}
+false              {process_match(); yylval.lexeme = make_lexeme_bool(get_line_number(), get_col_number(), 0);                            return TK_LIT_FALSE;}
 
-({alpha}|_)({alphanum}|_)* {process_match(); yylval.lexeme = make_lexeme_ident(get_line_number(), strdup(yytext)); return TK_IDENTIFICADOR;}
+({alpha}|_)({alphanum}|_)* {process_match(); yylval.lexeme = make_lexeme_ident(get_line_number(), get_col_number(), strdup(yytext)); return TK_IDENTIFICADOR;}
 
 . {process_match(); return TK_ERRO;}
 

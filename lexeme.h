@@ -27,6 +27,7 @@ typedef union {
 
 typedef struct {
     long long int line;
+    long long int column;
     lexeme_type_t type;
     lexeme_value_t value;
 } lexeme_t;
@@ -34,13 +35,13 @@ typedef struct {
 /* ################
  * # Constructors #
  * ################ */
-lexeme_t make_lexeme_int(int line, long long int value);
+lexeme_t make_lexeme_int(int line, int column, long long int value);
 
-lexeme_t make_lexeme_float(int line, double value);
+lexeme_t make_lexeme_float(int line, int column, double value);
 
-lexeme_t make_lexeme_bool(int line, bool value);
+lexeme_t make_lexeme_bool(int line, int column, bool value);
 
-lexeme_t make_lexeme_ident(int line, char *value);
+lexeme_t make_lexeme_ident(int line, int column, char *value);
 
 lexeme_t lex_clone(lexeme_t lexeme);
 
