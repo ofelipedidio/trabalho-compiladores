@@ -9,9 +9,20 @@
 
 %define parse.error verbose
 
+// Included in parser.tab.h
+%code requires { 
+#include "ast.h"
+}
+
+// Included in parser.tab.c
 %{
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "ast.h"
+#include "lexeme.h"
+#include "semantics.h"
 
 int yylex(void);
 void yyerror (char const *mensagem);
@@ -20,21 +31,38 @@ extern int get_line_number(void);
 extern int get_col_number(void);
 extern void *arvore;
 
-sym_tab_t *current_scope = sym_tab_init();
+ast_type_t current_type;
+sym_tab_t *current_scope = NULL;
+
+int delayed_param_error = 0;
+identifier_t *error_identifier;
+
+#define handle_bin_op(bin_op_type, self, left, right) self = ast_expression_new_bin_op(ast_bin_op_new(bin_op_type, left, right));
 
 %}
-
-%code requires { 
-#include "ast.h"
-#include "lexeme.h"
-#include "symbols.h"
-}
 
 %start programa
 
 %union {
     lexeme_t lexeme;
-    ast_t *node;
+    program_t *program_t;
+    global_t *global_t;
+    function_t *function_t;
+    variable_t *variable_t;
+    variable_names_t *variable_names_t;
+    parameters_t *parameters_t;
+    command_t *command_t;
+    block_t *block_t;
+    attribution_t *attribution_t;
+    call_t *call_t;
+    arguments_t *arguments_t;
+    return_t *return_t;
+    if_t *if_t;
+    while_t *while_t;
+    expression_t *expression_t;
+    literal_t *literal_t;
+    identifier_t *identifier_t;
+    ast_type_t ast_type_t;
 }
 
 %token TK_PR_INT
@@ -57,144 +85,248 @@ sym_tab_t *current_scope = sym_tab_init();
 %token<lexeme> TK_LIT_TRUE
 %token TK_ERRO
 
-%type<node> programa
-%type<node> global_definition
-%type<node> global_function_definition
+%type<program_t>        programa
+%type<program_t>        program
+%type<global_t>         global
+%type<function_t>       function
+%type<function_t>       function_header
+%type<variable_t>       gvariable
+%type<variable_names_t> gvariable_names
+%type<variable_t>       lvariable
+%type<variable_names_t> lvariable_names
+%type<parameters_t>     function_parameters
+%type<parameters_t>     parameter_list
 
-%type<node> block 
-%type<node> block_body 
+%type<command_t>        command
+%type<block_t>          block
+%type<block_t>          block_body
+%type<attribution_t>    attribution
+%type<call_t>           call
+%type<arguments_t>      arguments
+%type<arguments_t>      argument_list
+%type<return_t>         return_
+%type<if_t>             if_
+%type<while_t>          while_
 
-%type<node> command 
+%type<expression_t>     expression 
+%type<expression_t>     expr_1 
+%type<expression_t>     expr_2
+%type<expression_t>     expr_3 
+%type<expression_t>     expr_4 
+%type<expression_t>     expr_5 
+%type<expression_t>     expr_6 
+%type<expression_t>     expr_7 
+%type<expression_t>     expr_v 
 
-%type<node> variable_attribution 
-%type<node> function_call 
-%type<node> parameter_list 
-%type<node> return_statement 
-%type<node> if_statement 
-%type<node> while_statement 
+%type<literal_t>        literal
+%type<identifier_t>     identifier
 
-%type<node> expression 
-%type<node> expr_1 
-%type<node> expr_2
-%type<node> expr_3 
-%type<node> expr_4 
-%type<node> expr_5 
-%type<node> expr_6 
-%type<node> expr_7 
-%type<node> expr_v 
-
-%type<node> literal
-%type<node> identifier
+%type<ast_type_t>       type
 
 %%
-open_block: %empty;
-close_block: %empty;
+open_block: %empty { current_scope = sym_tab_push(current_scope); };
+close_block: %empty { current_scope = sym_tab_pop(current_scope); };
 
-programa: open_block global_definition close_block { $$ = $1; arvore = $$; };
+programa: open_block program close_block { $$ = $2; arvore = $$; };
 programa: open_block close_block { };
+program: global { $$ = ast_program_new(); ast_program_add_child($$, $1); };
+program: program global { $$ = $1; ast_program_add_child($$, $2); };
 
-global_definition: global_variable_definition { $$ = ast_make_node(noop); };
-global_definition: global_function_definition { $$ = $1; };
-global_definition: global_variable_definition global_definition { $$ = $2; };
-global_definition: global_function_definition global_definition { if ($2 != NULL && $2->type != noop) { ast_append($1, $2); } $$ = $1; };
+global: gvariable ';' { $$ = ast_global_new_variable($1); };
+global: function { $$ = ast_global_new_function($1); };
 
-global_variable_definition: global_variable_definition_type global_variable_definition_names ';' { /* NOOP */ };
-global_variable_definition_type: type { current_type = $1; };
-global_variable_definition_names: identifier { sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL});};
-
-global_variable_definition_names: global_variable_definition_names ',' identifier {
-    if (!sym_tab_find())
-    sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL});
+gvariable: type gvariable_names { $$ = ast_variable_new($1, $2); };
+gvariable_names: identifier {
+    $$ = ast_variable_names_new();
+    ast_variable_names_add_child($$, $1);
+    register_symbol_global_variable(current_scope, current_scope, $1, sem_nature_id, current_type);
+};
+gvariable_names: gvariable_names ',' identifier {
+    $$ = $1;
+    ast_variable_names_add_child($$, $3);
+    register_symbol_global_variable(current_scope, current_scope, $3, sem_nature_id, current_type);
 };
 
-global_function_definition: '(' parameter_list_definition ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $7); ast_append($$, $8); sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_func, current_type, identifier.lex}, NULL, NULL});};
-global_function_definition: '('                           ')' TK_OC_GE type '!' identifier block { $$ = ast_make_node(func_declaration); ast_append($$, $6); ast_append($$, $7); sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_func, current_type, identifier.lex}, NULL, NULL});};
+lvariable: type lvariable_names { $$ = ast_variable_new($1, $2); };
+lvariable_names: identifier {
+    $$ = ast_variable_names_new();
+    ast_variable_names_add_child($$, $1);
+    register_symbol_local_variable(current_scope, current_scope, $1, sem_nature_id, current_type);
+};
+lvariable_names: lvariable_names ',' identifier {
+    $$ = $1;
+    ast_variable_names_add_child($$, $3);
+    register_symbol_local_variable(current_scope, current_scope, $3, sem_nature_id, current_type);
+};
 
-parameter_list_definition: parameter_definition { /* NOOP */ };
-parameter_list_definition: parameter_list_definition ',' parameter_definition { /* NOOP */ };
+function: function_header '{' block_body '}' close_block { $$ = $1; $$->body = $3; };
+function_header: open_block '(' function_parameters ')' TK_OC_GE type '!' identifier {
+    if (delayed_param_error) {
+        printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", error_identifier->text);
+        printf("- Contexto: linha %lld, coluna %lld\n", error_identifier->lexeme.line, error_identifier->lexeme.column);
+        printf("- Contexto: na declaracao da funcao \"%s\"\n", $8->text);
+        exit(ERR_DECLARED);
+    }
 
-parameter_definition: type identifier { ast_free($2); /* NOOP */ };
+    $$ = ast_function_new($8, $6, $3, NULL);
+    register_symbol_function(current_scope, current_scope->parent, $8, sem_nature_func, $6);
+};
+function_parameters: %empty { $$ = ast_parameters_new(); };
+function_parameters: parameter_list { $$ = $1; };
+parameter_list: type identifier {
+    $$ = ast_parameters_new();
+    variable_names_t *temp = ast_variable_names_new();
+    ast_variable_names_add_child(temp, $2);
+    ast_parameters_add_child($$, ast_variable_new($1, temp));
+    register_symbol_parameter(current_scope, current_scope, $2, sem_nature_id, $1, &delayed_param_error, &error_identifier);
+};
+parameter_list: parameter_list ',' type identifier { 
+    $$ = $1;
+    variable_names_t *temp = ast_variable_names_new();
+    ast_variable_names_add_child(temp, $4);
+    ast_parameters_add_child($$, ast_variable_new($3, temp));
+    register_symbol_parameter(current_scope, current_scope, $4, sem_nature_id, $3, &delayed_param_error, &error_identifier);
+};
 
-block: open_block '{' block_body '}' close_block { $$ = $2; };
-block: open_block '{'            '}' close_block { $$ = ast_make_node(noop); };
+block: open_block '{' block_body '}' close_block { $$ = $3; };
+block_body: %empty { $$ = ast_block_new(); };
+block_body: block_body command ';' { $$ = $1; ast_block_add_child($$, $2); };
 
-block_body: command ';' { $$ = $1; };
-block_body: command ';' block_body { if ($1->type != noop) {ast_append($1, $3); $$ = $1;} else {ast_free($1); $$ = $3; } };
+command: lvariable { $$ = ast_command_new_variable($1); };
+command: attribution { $$ = ast_command_new_attribution($1); };
+command: call { $$ = ast_command_new_call($1); };
+command: return_ { $$ = ast_command_new_return($1); };
+command: if_ { $$ = ast_command_new_if($1); };
+command: while_ { $$ = ast_command_new_while($1); };
+command: block { $$ = ast_command_new_block($1); };
 
-command: variable_declaration { $$ = ast_make_node(noop); };
-command: variable_attribution { $$ = $1; };
-command: function_call { $$ = $1; };
-command: return_statement { $$ = $1; };
-command: if_statement { $$ = $1; };
-command: while_statement { $$ = $1; };
-command: block { $$ = $1; };
+attribution: identifier '=' expression {
+    $$ = ast_attribution_new($1, $3);
 
-variable_declaration: type variable_names { /* NOOP */ };
+    sym_val_t *val = sym_tab_find(current_scope, $1->text);
+    //sym_value_print(val);
+    if (val == NULL) {
+        printf("Erro semantico: variavel \"%s\" foi utilizada antes de ser declarada.\n", $1->text);
+        printf("- Contexto: attribuicao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
+        exit(ERR_UNDECLARED);
+    }
+    if (val->nature == sem_nature_func) {
+        exit(ERR_FUNCTION);
+    }
+}
+call: identifier '(' arguments ')' {
+    $$ = ast_call_new($1, $3);
+    sym_val_t *val = sym_tab_find(current_scope, $1->text);
+    if (val == NULL) {
+        printf("Erro semantico: variavel \"%s\" foi utilizada antes de ser declarada.\n", $1->text);
+        printf("- Contexto: chamada de funcao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
+        exit(ERR_UNDECLARED);
+    }
+    if (val->nature == sem_nature_id) {
+        printf("Erro semantico: variavel \"%s\" foi utilizada como funcao.\n", $1->text);
+        printf("- Contexto: linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
+        exit(ERR_VARIABLE);
+    }
+    $$->type = val->type;
 
-variable_names: identifier { sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL}); };
-variable_names: variable_names ',' identifier { sym_insert_node(current_scope->list, {identifier, { getLine(), sym_nature_id, current_type, identifier.lex}, NULL, NULL}); };
-
-variable_attribution: identifier '=' expression { $$ = ast_make_node(statement_attr); ast_append($$, $1); ast_append($$, $3); };
-
-function_call: identifier '(' parameter_list ')' { $$ = ast_make_node(statement_call); ast_append($$, $1); ast_append($$, $3); };
-function_call: identifier '('                ')' { $$ = ast_make_node(statement_call); ast_append($$, $1); ast_append($$, ast_make_node(noop)); };
-
-parameter_list: expression { $$ = ast_make_node(call_argument); ast_append($$, $1); };
-parameter_list: expression ',' parameter_list  { $$ = ast_make_node(call_argument); ast_append($$, $1); ast_append($$, $3); };
-
-return_statement: TK_PR_RETURN expression { $$ = ast_make_node(statement_return); ast_append($$, $2); };
-
-if_statement: TK_PR_IF '(' expression ')' block TK_PR_ELSE block { $$ = ast_make_node(statement_if); ast_append($$, $3); ast_append($$, $5); ast_append($$, $7); };
-if_statement: TK_PR_IF '(' expression ')' block                  { $$ = ast_make_node(statement_if); ast_append($$, $3); ast_append($$, $5); ast_append($$, ast_make_node(noop)); };
-
-while_statement: TK_PR_WHILE '(' expression ')' block { $$ = ast_make_node(statement_while); ast_append($$, $3); ast_append($$, $5); };
+    // Useful debugging tool!
+    /*
+    if (strcmp($1->text, "print_type") == 0) {
+        if ($3->len == 1) {
+            fprintf(stderr, "The type of `");
+            ast_expression_print($3->arguments[0]);
+            fprintf(stderr, "` is `%s`\n", ast_type_to_string($3->arguments[0]->type));
+        }
+    }
+    */
+};
+arguments: %empty { $$ = ast_arguments_new(); };
+arguments: argument_list { $$ = $1; };
+argument_list: expression { $$ = ast_arguments_new(); ast_arguments_add_child($$, $1); };
+argument_list: argument_list ',' expression { $$ = $1; ast_arguments_add_child($$, $3); };
+return_: TK_PR_RETURN expression { $$ = ast_return_new($2); };
+if_: TK_PR_IF '(' expression ')' block TK_PR_ELSE block { $$ = ast_if_new($3, $5, $7); };
+if_: TK_PR_IF '(' expression ')' block                  { $$ = ast_if_new($3, $5, ast_block_new()); };
+while_: TK_PR_WHILE '(' expression ')' block { $$ = ast_while_new($3, $5); };
 
 expression: expr_7 { $$ = $1; };
-
 expr_1: expr_v { $$ = $1; };
-expr_1: '-' expr_1 { $$ = ast_make_node(expr_inv); ast_append($$, $2); };
-expr_1: '!' expr_1 { $$ = ast_make_node(expr_not); ast_append($$, $2); };
-
+expr_1: '-' expr_1 { $$ = ast_expression_new_un_op(ast_un_op_new(op_inv, $2)); };
+expr_1: '!' expr_1 { $$ = ast_expression_new_un_op(ast_un_op_new(op_not, $2)); };
 expr_2: expr_1 { $$ = $1; };
-expr_2: expr_2 '*' expr_1 { $$ = ast_make_node(expr_mult); ast_append($$, $1); ast_append($$, $3);};
-expr_2: expr_2 '/' expr_1 { $$ = ast_make_node(expr_div); ast_append($$, $1); ast_append($$, $3);};
-expr_2: expr_2 '%' expr_1 { $$ = ast_make_node(expr_mod); ast_append($$, $1); ast_append($$, $3);};
-
+expr_2: expr_2 '*' expr_1 { handle_bin_op(op_mul, $$, $1, $3); };
+expr_2: expr_2 '/' expr_1 { handle_bin_op(op_div, $$, $1, $3); };
+expr_2: expr_2 '%' expr_1 { handle_bin_op(op_mod, $$, $1, $3); };
 expr_3: expr_2 { $$ = $1; };
-expr_3: expr_3 '+' expr_2 { $$ = ast_make_node(expr_add); ast_append($$, $1); ast_append($$, $3);};
-expr_3: expr_3 '-' expr_2 { $$ = ast_make_node(expr_sub); ast_append($$, $1); ast_append($$, $3);};
-
+expr_3: expr_3 '+' expr_2 { handle_bin_op(op_add, $$, $1, $3); };
+expr_3: expr_3 '-' expr_2 { handle_bin_op(op_sub, $$, $1, $3); };
 expr_4: expr_3 { $$ = $1; };
-expr_4: expr_4 '<' expr_3 { $$ = ast_make_node(expr_lt); ast_append($$, $1); ast_append($$, $3);};
-expr_4: expr_4 '>' expr_3 { $$ = ast_make_node(expr_gt); ast_append($$, $1); ast_append($$, $3);};
-expr_4: expr_4 TK_OC_LE expr_3 { $$ = ast_make_node(expr_le); ast_append($$, $1); ast_append($$, $3);};
-expr_4: expr_4 TK_OC_GE expr_3 { $$ = ast_make_node(expr_ge); ast_append($$, $1); ast_append($$, $3);};
-
+expr_4: expr_4 '<' expr_3 { handle_bin_op(op_lt, $$, $1, $3); };
+expr_4: expr_4 '>' expr_3 { handle_bin_op(op_gt, $$, $1, $3); };
+expr_4: expr_4 TK_OC_LE expr_3 { handle_bin_op(op_le, $$, $1, $3); };
+expr_4: expr_4 TK_OC_GE expr_3 { handle_bin_op(op_ge, $$, $1, $3); };
 expr_5: expr_4 { $$ = $1; };
-expr_5: expr_5 TK_OC_EQ expr_4 { $$ = ast_make_node(expr_eq); ast_append($$, $1); ast_append($$, $3);};
-expr_5: expr_5 TK_OC_NE expr_4 { $$ = ast_make_node(expr_ne); ast_append($$, $1); ast_append($$, $3);} 
-
+expr_5: expr_5 TK_OC_EQ expr_4 { handle_bin_op(op_eq, $$, $1, $3); };
+expr_5: expr_5 TK_OC_NE expr_4 { handle_bin_op(op_ne, $$, $1, $3); };
 expr_6: expr_5 { $$ = $1; };
-expr_6: expr_6 TK_OC_AND expr_5 { $$ = ast_make_node(expr_and); ast_append($$, $1); ast_append($$, $3);};
-
+expr_6: expr_6 TK_OC_AND expr_5 { handle_bin_op(op_and, $$, $1, $3); };
 expr_7: expr_6 { $$ = $1; };
-expr_7: expr_7 TK_OC_OR expr_6 { $$ = ast_make_node(expr_or); ast_append($$, $1); ast_append($$, $3);};
-
+expr_7: expr_7 TK_OC_OR expr_6 { handle_bin_op(op_or, $$, $1, $3); };
 expr_v: '(' expression ')' { $$ = $2; };
-expr_v: identifier { $$ = $1; };
-expr_v: literal { $$ = $1; };
-expr_v: function_call { $$ = $1; };
+expr_v: literal { $$ = ast_expression_new_literal($1); };
+expr_v: identifier {
+    $$ = ast_expression_new_identifier($1);
 
-type: TK_PR_INT { };
-type: TK_PR_FLOAT { };
-type: TK_PR_BOOL { };
+    sym_val_t *val = sym_tab_find(current_scope, $1->text);
+    if (val == NULL) {
+        printf("Erro semantico: variavel \"%s\" foi utilizada antes de ser declarada.\n", $1->text);
+        printf("- Contexto: expressao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
+        exit(ERR_UNDECLARED);
+    }
+    if (val->nature == sem_nature_func) {
+        printf("Erro semantico: funcao \"%s\" foi utilizada como variavel.\n", $1->text);
+        printf("- Contexto: expressao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
+        exit(ERR_FUNCTION);
+    }
+    $$->type = val->type;
+}
+expr_v: call { $$ = ast_expression_new_call($1); };
 
-identifier: TK_IDENTIFICADOR { $$ = ast_make_leaf(ident, $1); };
+type: TK_PR_INT { $$ = ast_int; current_type = $$; };
+type: TK_PR_FLOAT { $$ = ast_float; current_type = $$; };
+type: TK_PR_BOOL { $$ = ast_bool; current_type = $$; };
 
-literal: TK_LIT_INT { $$ = ast_make_leaf(lit_int_type, $1); };
-literal: TK_LIT_FLOAT { $$ = ast_make_leaf(lit_float_type, $1); };
-literal: TK_LIT_TRUE { $$ = ast_make_leaf(lit_bool_type, $1); };
-literal: TK_LIT_FALSE { $$ = ast_make_leaf(lit_bool_type, $1); };
+identifier: TK_IDENTIFICADOR { $$ = ast_identifier_new($1.value.ident, $1); };
+
+literal: TK_LIT_INT { $$ = ast_literal_new_int(ast_int_new($1.value.lit_int, $1)); };
+literal: TK_LIT_FLOAT { $$ = ast_literal_new_float(ast_float_new($1.value.lit_float, $1)); };
+literal: TK_LIT_TRUE { $$ = ast_literal_new_bool(ast_bool_new_true($1)); };
+literal: TK_LIT_FALSE { $$ = ast_literal_new_bool(ast_bool_new_false($1)); };
 
 %%
 

@@ -15,9 +15,11 @@ for file in e3_tests/*; do
         if [[ $SKIP -gt 0 ]]; then
             SKIP=$(( $SKIP - 1 ))
         else
+            echo "--- running ---"
+            ../etapa4 < $file > out.txt;
+            echo "Return code: " $?
+            bat out.txt
             bat $file;
-            echo "running"
-            ../etapa3 < $file > out.txt;
             if [[ $? -eq 0 ]]; then
                 echo "converting"
                 ../output2dot.sh < out.txt > out.dot;
@@ -25,7 +27,6 @@ for file in e3_tests/*; do
                 xdot out.dot & xdot $file.ref.dot & wait;
             else
                 echo "syntax error"
-                bat out.txt
                 read -r asd
             fi
             rm out.txt out.dot
