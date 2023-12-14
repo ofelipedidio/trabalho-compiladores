@@ -1,15 +1,12 @@
-int zyx;
-() >= int ! aux {
-    int x;
-    { int y; };
-    { int y; };
+() >= bool ! print_type {
 }
-(int xyx) >= int ! main {
-    int x;
-    { int y; };
-    { int y; };
-    aux();
-    x = !-1*2/3%4+5+6>7<8>=9<=10==11!=12&13|12;
-    { {}; { {}; }; };
-    x = 1;
+
+
+() >= int ! main {
+    print_type(1);
+    print_type(1.2);
+    print_type(true);
+    print_type(false);
+    print_type(print_type(1));
 }
+

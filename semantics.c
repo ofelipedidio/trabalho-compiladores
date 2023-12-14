@@ -99,23 +99,32 @@ void sym_list_node_free(sym_list_t *node) {
 void sym_list_print(sym_list_t *list) {
     int first = 1;
     while (list != NULL) {
-        fprintf(
-                stderr,
-                "%s(key=\"%s\", value=<%s, lin=%lld, col=%lld, typ=%s, nat=%s>)\n", 
-                (first ? "--- " : "    "),
-                list->key,
-                list->value.lex.value.ident,
-                list->value.line,
-                list->value.column,
-                list->value.type == sem_type_int ? "int" :
-                    list->value.type == sem_type_float ? "float" : "bool",
-                list->value.nature == sym_nature_id ? "id" : 
-                    list->value.nature == sym_nature_func ? "func" : "other"
-                );
+        fprintf(stderr, "%s", first ? "--- " : "    ");
+        sym_value_print(&list->value);
         list = list->next;
         first = 0;
     }
 }
+
+void sym_value_print(sym_val_t *value) {
+    if (value == NULL) {
+        fprintf(stderr, "(nul)\n");
+        return;
+    }
+
+    fprintf(
+            stderr,
+            "(key=\"%s\", value=<%s, lin=%lld, col=%lld, typ=%s, nat=%s>)\n", 
+            value->lex.value.ident,
+            value->lex.value.ident,
+            value->line,
+            value->column,
+            ast_type_to_string(value->type),
+            value->nature == sem_nature_id ? "id" : 
+            value->nature == sem_nature_func ? "func" : "other"
+           );
+}
+
 
 sym_tab_t* sym_tab_init() {
     // An empty stack is represented as a NULL pointer
@@ -163,17 +172,17 @@ void sym_tab_print(sym_tab_t *stack) {
 }
 
 
-sem_type_t infer_type(sem_type_t left, sem_type_t right) {
+ast_type_t infer_type(ast_type_t left, ast_type_t right) {
     if (left == right) {
         return left;
-    } else if (left == sem_type_float || right == sem_type_float) {
-        return sem_type_float;
+    } else if (left == ast_float || right == ast_float) {
+        return ast_float;
     } else {
-        return sem_type_int;
+        return ast_int;
     }
 }
 
-void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sym_nature_t nature, sem_type_t type) {
+void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type) {
     sym_val_t temp_val;
     sym_val_t *temp;
 
@@ -191,23 +200,11 @@ void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sym_nat
     temp_val.type = type;
     temp_val.lex = lex_clone(identifier->lexeme);
     current_scope->list = sym_list_insert(
-        current_scope->list,
-        identifier->text,
-        temp_val
-    ); 
+            current_scope->list,
+            identifier->text,
+            temp_val
+            ); 
 
     sym_tab_print(current_scope);
     fprintf(stderr, "\n");
 }
-
-sem_type_t from_ast_type(ast_type_t type) {
-    switch (type) {
-        case ast_int:
-            return sem_type_int;
-        case ast_float:
-            return sem_type_float;
-        case ast_bool:
-            return sem_type_bool;
-    }
-}
-

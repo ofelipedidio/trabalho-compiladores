@@ -10,24 +10,18 @@
 #define ERR_FUNCTION 21 //2.3
 
 typedef enum {
-    sem_type_int,
-    sem_type_float,
-    sem_type_bool,
-} sem_type_t;
-
-typedef enum {
-    sym_nature_lit,
-    sym_nature_id,
-    sym_nature_func,
-} sym_nature_t;
+    sem_nature_lit,
+    sem_nature_id,
+    sem_nature_func,
+} sem_nature_t;
 
 typedef char* sym_key_t;
 
 typedef struct {
     long long int line;
     long long int column;
-    sym_nature_t nature;
-    sem_type_t type;
+    sem_nature_t nature;
+    ast_type_t type;
     lexeme_t lex;
 } sym_val_t;
 
@@ -84,6 +78,12 @@ void sym_list_node_free(sym_list_t *node);
  */
 void sym_list_print(sym_list_t *list);
 
+/*
+ * This function prints the contents of a value
+ */
+void sym_value_print(sym_val_t *value);
+
+
 
 /*
  * This function initializes the stack and returns a pointer to it.
@@ -119,14 +119,12 @@ void sym_tab_free_table(sym_tab_t *table);
 void sym_tab_print(sym_tab_t *stack);
 
 
-sem_type_t from_ast_type(ast_type_t type);
+#define ast_type_to_string(expr) ((expr) == ast_int ? "int" : ((expr) == ast_float ? "float" : ((expr) == ast_bool ? "bool" : "undefined")))
 
-sem_type_t infer_type(sem_type_t left, sem_type_t right);
-
-#define sem_type_to_string(expr) ((expr) == sem_type_int ? "int" : ((expr) == sem_type_float ? "float" : "bool"))
+ast_type_t infer_type(ast_type_t left, ast_type_t right);
 
 // void handle_variable_attribution(ast_t *self, ast_t *identifier, ast_t *expr);
 
-void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sym_nature_t nature, sem_type_t type);
+void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type);
 
 #endif // !SEMANTICS

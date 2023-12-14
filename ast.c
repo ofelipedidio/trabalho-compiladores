@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
+#include "semantics.h"
 
 /* ################
  * # Constructors #
@@ -147,6 +149,7 @@ command_t *ast_command_new_variable(variable_t *variable) {
     command->_if = NULL;
     command->_while = NULL;
     command->block = NULL;
+    command->type = variable->type;
     return command;
 }
 
@@ -166,6 +169,7 @@ command_t *ast_command_new_attribution(attribution_t *attribution) {
     command->_if = NULL;
     command->_while = NULL;
     command->block = NULL;
+    command->type = attribution->type;
     return command;
 }
 
@@ -185,6 +189,7 @@ command_t *ast_command_new_call(call_t *call) {
     command->_if = NULL;
     command->_while = NULL;
     command->block = NULL;
+    command->type = call->type;
     return command;
 }
 
@@ -204,6 +209,7 @@ command_t *ast_command_new_return(return_t *_return) {
     command->_while = NULL;
     command->_return = _return;
     command->block = NULL;
+    command->type = _return->type;
     return command;
 }
 
@@ -223,6 +229,7 @@ command_t *ast_command_new_if(if_t *_if) {
     command->_if = _if;
     command->_while = NULL;
     command->block = NULL;
+    command->type = _if->type;
     return command;
 }
 
@@ -242,6 +249,7 @@ command_t *ast_command_new_while(while_t *_while) {
     command->_if = NULL;
     command->_while = _while;
     command->block = NULL;
+    command->type = _while->type;
     return command;
 }
 
@@ -261,11 +269,11 @@ command_t *ast_command_new_block(block_t *block) {
     command->_if = NULL;
     command->_while = NULL;
     command->block = block;
+    command->type = ast_type_undefined;
     return command;
 }
 
-attribution_t *ast_attribution_new(identifier_t *variable_name,
-        expression_t *expression) {
+attribution_t *ast_attribution_new(identifier_t *variable_name, expression_t *expression) {
     attribution_t *attribution = (attribution_t *)malloc(sizeof(attribution_t));
     if (attribution == NULL) {
         fprintf(stderr,
@@ -276,6 +284,7 @@ attribution_t *ast_attribution_new(identifier_t *variable_name,
     }
     attribution->variable_name = variable_name;
     attribution->expression = expression;
+    attribution->type = ast_type_undefined;
     return attribution;
 }
 
@@ -291,6 +300,7 @@ call_t *ast_call_new(identifier_t *function_name, arguments_t *arguments) {
     }
     call->function_name = function_name;
     call->arguments = arguments;
+    call->type = ast_type_undefined;
     return call;
 }
 
@@ -325,6 +335,7 @@ return_t *ast_return_new(expression_t *expression) {
         return NULL;
     }
     _return->expression = expression;
+    _return->type = expression->type;
     return _return;
 }
 
@@ -342,6 +353,7 @@ if_t *ast_if_new(expression_t *condition, block_t *then_block,
     _if->condition = condition;
     _if->then_block = then_block;
     _if->else_block = else_block;
+    _if->type = condition->type;
     return _if;
 }
 
@@ -356,6 +368,7 @@ while_t *ast_while_new(expression_t *condition, block_t *block) {
     }
     _while->condition = condition;
     _while->block = block;
+    _while->type = condition->type;
     return _while;
 }
 
@@ -396,6 +409,7 @@ expression_t *ast_expression_new_bin_op(bin_op_t *_bin_op) {
     expression->call = NULL;
     expression->identifier = NULL;
     expression->literal = NULL;
+    expression->type = _bin_op->type;
     return expression;
 }
 
@@ -413,6 +427,7 @@ expression_t *ast_expression_new_un_op(un_op_t *_un_op) {
     expression->call = NULL;
     expression->identifier = NULL;
     expression->literal = NULL;
+    expression->type = _un_op->type;
     return expression;
 }
 
@@ -430,6 +445,7 @@ expression_t *ast_expression_new_call(call_t *call) {
     expression->call = call;
     expression->identifier = NULL;
     expression->literal = NULL;
+    expression->type = call->type;
     return expression;
 }
 
@@ -447,6 +463,7 @@ expression_t *ast_expression_new_identifier(identifier_t *identifier) {
     expression->call = NULL;
     expression->identifier = identifier;
     expression->literal = NULL;
+    expression->type = identifier->type;
     return expression;
 }
 
@@ -464,6 +481,7 @@ expression_t *ast_expression_new_literal(literal_t *literal) {
     expression->call = NULL;
     expression->identifier = NULL;
     expression->literal = literal;
+    expression->type = literal->type;
     return expression;
 }
 
@@ -479,6 +497,7 @@ bin_op_t *ast_bin_op_new(bin_op op, expression_t *left, expression_t *right) {
     bin_op->op = op;
     bin_op->left = left;
     bin_op->right = right;
+    bin_op->type = infer_type(left->type, right->type);
     return bin_op;
 }
 
@@ -493,6 +512,7 @@ un_op_t *ast_un_op_new(un_op op, expression_t *expression) {
     }
     un_op->op = op;
     un_op->expression = expression;
+    un_op->type = expression->type;
     return un_op;
 };
 
@@ -508,6 +528,7 @@ literal_t *ast_literal_new_int(ast_int_t *_int) {
     literal->_int = _int;
     literal->_float = NULL;
     literal->_bool = NULL;
+    literal->type = ast_int;
     return literal;
 }
 
@@ -523,6 +544,7 @@ literal_t *ast_literal_new_float(ast_float_t *_float) {
     literal->_int = NULL;
     literal->_float = _float;
     literal->_bool = NULL;
+    literal->type = ast_float;
     return literal;
 }
 
@@ -538,6 +560,7 @@ literal_t *ast_literal_new_bool(ast_bool_t *_bool) {
     literal->_int = NULL;
     literal->_float = NULL;
     literal->_bool = _bool;
+    literal->type = ast_bool;
     return literal;
 }
 
@@ -612,6 +635,7 @@ identifier_t *ast_identifier_new(char *text, lexeme_t lexeme) {
     identifier->text = strdup(text);
     identifier->len = strlen(text);
     identifier->lexeme = lexeme;
+    identifier->type = ast_type_undefined;
     return identifier;
 }
 
@@ -1091,6 +1115,58 @@ void *ast_bool_export(ast_bool_t *_bool) {
 void *ast_identifier_export(identifier_t *identifier) {
     printf("%p [label=\"%s\"]\n", identifier, identifier->text);
     return identifier;
+}
+
+char *ast_call_print(call_t *call) {
+    fprintf(stderr, "%s(", call->function_name->text);
+    for (uint64_t i = 0; i < call->arguments->len; i++) {
+        if (i > 0) {
+            fprintf(stderr, ", ");
+        }
+        ast_expression_print(call->arguments->arguments[i]);
+    }
+    fprintf(stderr, ")");
+}
+
+char *ast_expression_print(expression_t *expression) {
+    if (expression->literal != NULL) {
+        return ast_literal_print(expression->literal);
+    } else if (expression->call != NULL) {
+        return ast_call_print(expression->call);
+    } else if (expression->identifier != NULL) {
+        return ast_identifier_print(expression->identifier);
+    } else if (expression->_bin_op != NULL) {
+        return ast_bin_op_print(expression->_bin_op);
+    } else {
+        return ast_un_op_print(expression->_un_op);
+    }
+}
+
+char *ast_bin_op_print(bin_op_t *_bin_op) {
+    fprintf(stderr, "(");
+    ast_expression_print(_bin_op->left);
+    fprintf(stderr, ") %s (", bin_op_label(_bin_op->op));
+    ast_expression_print(_bin_op->right);
+    fprintf(stderr, ")");
+}
+
+char *ast_un_op_print(un_op_t *_un_op) {
+    fprintf(stderr, "%s", un_op_label(_un_op->op));
+    ast_expression_print(_un_op->expression);
+}
+
+char *ast_literal_print(literal_t *literal) {
+    if (literal->_int != NULL) {
+        fprintf(stderr, "%d", literal->_int->value);
+    } else if (literal->_float != NULL) {
+        fprintf(stderr, "%f", literal->_float->value);
+    } else {
+        fprintf(stderr, "%s", literal->_bool->value == 0 ? "false" : "true");
+    }
+}
+
+char *ast_identifier_print(identifier_t *identifier) {
+    fprintf(stderr, "%s", identifier->text);
 }
 
 

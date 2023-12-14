@@ -34,6 +34,7 @@ enum un_op {
 };
 
 enum ast_type {
+    ast_type_undefined,
     ast_int,
     ast_float,
     ast_bool,
@@ -128,16 +129,19 @@ struct ast_command {
     if_t *_if;
     while_t *_while;
     block_t *block;
+    ast_type_t type;
 };
 
 struct ast_attribution {
     identifier_t *variable_name;
     expression_t *expression;
+    ast_type_t type;
 };
 
 struct ast_call {
     identifier_t *function_name;
     arguments_t *arguments;
+    ast_type_t type;
 };
 
 struct ast_arguments {
@@ -147,17 +151,20 @@ struct ast_arguments {
 
 struct ast_return {
     expression_t *expression;
+    ast_type_t type;
 };
 
 struct ast_if {
     expression_t *condition;
     block_t *then_block;
     block_t *else_block;
+    ast_type_t type;
 };
 
 struct ast_while {
     expression_t *condition;
     block_t *block;
+    ast_type_t type;
 };
 
 struct ast_block {
@@ -171,23 +178,27 @@ struct ast_expression {
     call_t *call;
     literal_t *literal;
     identifier_t *identifier;
+    ast_type_t type;
 };
 
 struct ast_bin_op {
     bin_op op;
     expression_t *left;
     expression_t *right;
+    ast_type_t type;
 };
 
 struct ast_un_op {
     un_op op;
     expression_t *expression;
+    ast_type_t type;
 };
 
 struct ast_literal {
     ast_int_t *_int;
     ast_float_t *_float;
     ast_bool_t *_bool;
+    ast_type_t type;
 };
 
 struct ast_int {
@@ -209,6 +220,7 @@ struct ast_identifier {
     char *text;
     uint64_t len;
     lexeme_t lexeme;
+    ast_type_t type;
 };
 
 /* ################
@@ -309,5 +321,15 @@ void *ast_int_export(ast_int_t *_int);
 void *ast_float_export(ast_float_t *_float);
 void *ast_bool_export(ast_bool_t *_bool);
 void *ast_identifier_export(identifier_t *identifier);
+
+char *ast_call_print(call_t *call);
+char *ast_expression_print(expression_t *expression);
+char *ast_bin_op_print(bin_op_t *bin_op);
+char *ast_un_op_print(un_op_t *un_op);
+char *ast_literal_print(literal_t *literal);
+char *ast_int_print(ast_int_t *_int);
+char *ast_float_print(ast_float_t *_float);
+char *ast_bool_print(ast_bool_t *_bool);
+char *ast_identifier_print(identifier_t *identifier);
 
 #endif // !AST

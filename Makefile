@@ -15,12 +15,16 @@ OBJ=lex.yy.o main.o parser.tab.o ast.o lexeme.o semantics.o
 
 all: clean $(ETAPA)
 
-lex.yy.c:
+scanner.l:
+
+parser.y:
+
+lex.yy.c: scanner.l
 	flex scanner.l
-parser.tab.c:
+parser.tab.c: parser.y
 	bison -d parser.y
 
-parser.tab.h:
+parser.tab.h: parser.y
 	bison -d parser.y
 
 %.o: %.c $(DEPS)
@@ -28,6 +32,8 @@ parser.tab.h:
 
 $(ETAPA): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
+
+.PHONY: run clean entrega test
 
 run: $(ETAPA)
 	./$(ETAPA)

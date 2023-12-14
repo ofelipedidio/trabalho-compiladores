@@ -11,9 +11,7 @@
 
 // Included in parser.tab.h
 %code requires { 
-#include "lexeme.h"
 #include "ast.h"
-#include "semantics.h"
 }
 
 // Included in parser.tab.c
@@ -35,7 +33,6 @@ extern void *arvore;
 
 ast_type_t current_type;
 sym_tab_t *current_scope = NULL;
-sym_list_t *temp_node;
 
 #define handle_bin_op(bin_op_type, self, left, right) self = ast_expression_new_bin_op(ast_bin_op_new(bin_op_type, left, right));
 
@@ -137,18 +134,18 @@ variable: type variable_names { $$ = ast_variable_new($1, $2); };
 variable_names: identifier {
     $$ = ast_variable_names_new();
     ast_variable_names_add_child($$, $1);
-    register_symbol(current_scope, $1, sym_nature_id, from_ast_type(current_type));
+    register_symbol(current_scope, $1, sem_nature_id, current_type);
 };
 variable_names: variable_names ',' identifier {
     $$ = $1;
     ast_variable_names_add_child($$, $3);
-    register_symbol(current_scope, $3, sym_nature_id, from_ast_type(current_type));
+    register_symbol(current_scope, $3, sem_nature_id, current_type);
 };
 
 function: function_header '{' block_body '}' close_block { $$ = $1; $$->body = $3; };
 function_header: open_block '(' function_parameters ')' TK_OC_GE type '!' identifier {
     $$ = ast_function_new($8, $6, $3, NULL);
-    register_symbol(current_scope->parent, $8, sym_nature_func, from_ast_type($6));
+    register_symbol(current_scope->parent, $8, sem_nature_func, $6);
 };
 function_parameters: %empty { $$ = ast_parameters_new(); };
 function_parameters: parameter_list { $$ = $1; };
@@ -157,14 +154,14 @@ parameter_list: type identifier {
     variable_names_t *temp = ast_variable_names_new();
     ast_variable_names_add_child(temp, $2);
     ast_parameters_add_child($$, ast_variable_new($1, temp));
-    register_symbol(current_scope, $2, sym_nature_id, from_ast_type($1));
+    register_symbol(current_scope, $2, sem_nature_id, $1);
 };
 parameter_list: parameter_list ',' type identifier { 
     $$ = $1;
     variable_names_t *temp = ast_variable_names_new();
     ast_variable_names_add_child(temp, $4);
     ast_parameters_add_child($$, ast_variable_new($3, temp));
-    register_symbol(current_scope, $4, sym_nature_id, from_ast_type($3));
+    register_symbol(current_scope, $4, sem_nature_id, $3);
 };
 
 block: open_block '{' block_body '}' close_block { $$ = $3; };
@@ -173,14 +170,35 @@ block_body: block_body command ';' { $$ = $1; ast_block_add_child($$, $2); };
 
 command: variable { $$ = ast_command_new_variable($1); };
 command: attribution { $$ = ast_command_new_attribution($1); };
-command: call { $$ = ast_command_new_call($1); };
+command: call { $$ = ast_command_new_call($1); /* TODO: check type */ };
 command: return_ { $$ = ast_command_new_return($1); };
 command: if_ { $$ = ast_command_new_if($1); };
 command: while_ { $$ = ast_command_new_while($1); };
 command: block { $$ = ast_command_new_block($1); };
 
 attribution: identifier '=' expression { $$ = ast_attribution_new($1, $3); }
-call: identifier '(' arguments ')' { $$ = ast_call_new($1, $3); };
+call: identifier '(' arguments ')' {
+    $$ = ast_call_new($1, $3);
+    sym_val_t *val = sym_tab_find(current_scope, $1->text);
+    if (val == NULL) {
+        // TODO: write better message
+        printf("Name `%s` was not defined.\n", $1->text);
+        exit(ERR_UNDECLARED);
+    }
+    if (val->nature == sem_nature_id) {
+        printf("Name `%s` was used as function, but is variable.\n", $1->text);
+        exit(ERR_VARIABLE);
+    }
+    $$->type = val->type;
+
+    if (strcmp($1->text, "print_type") == 0) {
+        if ($3->len == 1) {
+            fprintf(stderr, "The type of `");
+            ast_expression_print($3->arguments[0]);
+            fprintf(stderr, "` is `%s`\n", ast_type_to_string($3->arguments[0]->type));
+        }
+    }
+};
 arguments: %empty { $$ = ast_arguments_new(); };
 arguments: argument_list { $$ = $1; };
 argument_list: expression { $$ = ast_arguments_new(); ast_arguments_add_child($$, $1); };
@@ -215,7 +233,22 @@ expr_7: expr_6 { $$ = $1; };
 expr_7: expr_7 TK_OC_OR expr_6 { handle_bin_op(op_or, $$, $1, $3); };
 expr_v: '(' expression ')' { $$ = $2; };
 expr_v: literal { $$ = ast_expression_new_literal($1); };
-expr_v: identifier { $$ = ast_expression_new_identifier($1); }
+expr_v: identifier {
+    $$ = ast_expression_new_identifier($1);
+    /* TODO: check type */
+    sym_val_t *val = sym_tab_find(current_scope, $1->text);
+    sym_value_print(val);
+    if (val == NULL) {
+        // TODO: write better message
+        printf("Name `%s` was not defined.\n", $1->text);
+        exit(ERR_UNDECLARED);
+    }
+    if (val->nature == sem_nature_func) {
+        printf("Name `%s` was used as variable, but is function.\n", $1->text);
+        exit(ERR_FUNCTION);
+    }
+    $$->type = val->type;
+}
 expr_v: call { $$ = ast_expression_new_call($1); };
 
 type: TK_PR_INT { $$ = ast_int; current_type = $$; };
