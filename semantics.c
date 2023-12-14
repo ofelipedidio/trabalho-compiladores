@@ -182,15 +182,20 @@ ast_type_t infer_type(ast_type_t left, ast_type_t right) {
     }
 }
 
-void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type) {
+void register_symbol_global_variable(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type) {
     sym_val_t temp_val;
     sym_val_t *temp;
 
-    fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
+    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
 
-    if ((temp = sym_tab_find(current_scope, identifier->text)) != NULL) {
-        // TODO - Didio: write error message
-        fprintf(stderr, "ERROR: symbol \"%s\" already exists!\n", identifier->text);
+    if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
+        printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", identifier->text);
+        printf("- Contexto: declaracao global na linha %lld, coluna %lld\n", identifier->lexeme.line, identifier->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
         exit(ERR_DECLARED);
     }
 
@@ -205,6 +210,97 @@ void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sem_nat
             temp_val
             ); 
 
-    sym_tab_print(current_scope);
-    fprintf(stderr, "\n");
+    // sym_tab_print(current_scope);
+    // fprintf(stderr, "\n");
+}
+
+void register_symbol_function(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type) {
+    sym_val_t temp_val;
+    sym_val_t *temp;
+
+    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
+
+    if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
+        printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", identifier->text);
+        printf("- Contexto: linha %lld, coluna %lld\n", identifier->lexeme.line, identifier->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: na declaracao da funcao \"%s\"\n", identifier->text);
+        exit(ERR_DECLARED);
+    }
+
+    temp_val.line = identifier->lexeme.line;
+    temp_val.column = identifier->lexeme.column;
+    temp_val.nature = nature;
+    temp_val.type = type;
+    temp_val.lex = lex_clone(identifier->lexeme);
+    current_scope->list = sym_list_insert(
+            current_scope->list,
+            identifier->text,
+            temp_val
+            ); 
+
+    // sym_tab_print(current_scope);
+    // fprintf(stderr, "\n");
+}
+
+void register_symbol_parameter(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type, int *delayed_param_error, identifier_t **error_identifier) {
+    sym_val_t temp_val;
+    sym_val_t *temp;
+
+    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
+
+    if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
+        *delayed_param_error = 1;
+        *error_identifier = identifier;
+        return;
+    }
+
+    temp_val.line = identifier->lexeme.line;
+    temp_val.column = identifier->lexeme.column;
+    temp_val.nature = nature;
+    temp_val.type = type;
+    temp_val.lex = lex_clone(identifier->lexeme);
+    current_scope->list = sym_list_insert(
+            current_scope->list,
+            identifier->text,
+            temp_val
+            ); 
+
+    // sym_tab_print(current_scope);
+    // fprintf(stderr, "\n");
+}
+
+void register_symbol_local_variable(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type) {
+    sym_val_t temp_val;
+    sym_val_t *temp;
+
+    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
+
+    if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
+        printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", identifier->text);
+        printf("- Contexto: declaracao local na linha %lld, coluna %lld\n", identifier->lexeme.line, identifier->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
+        exit(ERR_DECLARED);
+    }
+
+    temp_val.line = identifier->lexeme.line;
+    temp_val.column = identifier->lexeme.column;
+    temp_val.nature = nature;
+    temp_val.type = type;
+    temp_val.lex = lex_clone(identifier->lexeme);
+    current_scope->list = sym_list_insert(
+            current_scope->list,
+            identifier->text,
+            temp_val
+            ); 
+
+    // sym_tab_print(current_scope);
+    // fprintf(stderr, "\n");
 }

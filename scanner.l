@@ -16,7 +16,7 @@
 #include"parser.tab.h"
 
 int line = 1;
-int col = 0;
+int col = 1;
 int line_next = 1;
 int col_next = 1;
 
@@ -98,7 +98,7 @@ void process_match() {
         switch (yytext[i]) {
             case '\n':
                 line_next++;
-                col_next = 0;
+                col_next = 1;
                 break;
             default:
                 col_next++;

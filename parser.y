@@ -34,6 +34,9 @@ extern void *arvore;
 ast_type_t current_type;
 sym_tab_t *current_scope = NULL;
 
+int delayed_param_error = 0;
+identifier_t *error_identifier;
+
 #define handle_bin_op(bin_op_type, self, left, right) self = ast_expression_new_bin_op(ast_bin_op_new(bin_op_type, left, right));
 
 %}
@@ -87,8 +90,10 @@ sym_tab_t *current_scope = NULL;
 %type<global_t>         global
 %type<function_t>       function
 %type<function_t>       function_header
-%type<variable_t>       variable
-%type<variable_names_t> variable_names
+%type<variable_t>       gvariable
+%type<variable_names_t> gvariable_names
+%type<variable_t>       lvariable
+%type<variable_names_t> lvariable_names
 %type<parameters_t>     function_parameters
 %type<parameters_t>     parameter_list
 
@@ -127,25 +132,44 @@ programa: open_block close_block { };
 program: global { $$ = ast_program_new(); ast_program_add_child($$, $1); };
 program: program global { $$ = $1; ast_program_add_child($$, $2); };
 
-global: variable ';' { $$ = ast_global_new_variable($1); };
+global: gvariable ';' { $$ = ast_global_new_variable($1); };
 global: function { $$ = ast_global_new_function($1); };
 
-variable: type variable_names { $$ = ast_variable_new($1, $2); };
-variable_names: identifier {
+gvariable: type gvariable_names { $$ = ast_variable_new($1, $2); };
+gvariable_names: identifier {
     $$ = ast_variable_names_new();
     ast_variable_names_add_child($$, $1);
-    register_symbol(current_scope, $1, sem_nature_id, current_type);
+    register_symbol_global_variable(current_scope, current_scope, $1, sem_nature_id, current_type);
 };
-variable_names: variable_names ',' identifier {
+gvariable_names: gvariable_names ',' identifier {
     $$ = $1;
     ast_variable_names_add_child($$, $3);
-    register_symbol(current_scope, $3, sem_nature_id, current_type);
+    register_symbol_global_variable(current_scope, current_scope, $3, sem_nature_id, current_type);
+};
+
+lvariable: type lvariable_names { $$ = ast_variable_new($1, $2); };
+lvariable_names: identifier {
+    $$ = ast_variable_names_new();
+    ast_variable_names_add_child($$, $1);
+    register_symbol_local_variable(current_scope, current_scope, $1, sem_nature_id, current_type);
+};
+lvariable_names: lvariable_names ',' identifier {
+    $$ = $1;
+    ast_variable_names_add_child($$, $3);
+    register_symbol_local_variable(current_scope, current_scope, $3, sem_nature_id, current_type);
 };
 
 function: function_header '{' block_body '}' close_block { $$ = $1; $$->body = $3; };
 function_header: open_block '(' function_parameters ')' TK_OC_GE type '!' identifier {
+    if (delayed_param_error) {
+        printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", error_identifier->text);
+        printf("- Contexto: linha %lld, coluna %lld\n", error_identifier->lexeme.line, error_identifier->lexeme.column);
+        printf("- Contexto: na declaracao da funcao \"%s\"\n", $8->text);
+        exit(ERR_DECLARED);
+    }
+
     $$ = ast_function_new($8, $6, $3, NULL);
-    register_symbol(current_scope->parent, $8, sem_nature_func, $6);
+    register_symbol_function(current_scope, current_scope->parent, $8, sem_nature_func, $6);
 };
 function_parameters: %empty { $$ = ast_parameters_new(); };
 function_parameters: parameter_list { $$ = $1; };
@@ -154,43 +178,74 @@ parameter_list: type identifier {
     variable_names_t *temp = ast_variable_names_new();
     ast_variable_names_add_child(temp, $2);
     ast_parameters_add_child($$, ast_variable_new($1, temp));
-    register_symbol(current_scope, $2, sem_nature_id, $1);
+    register_symbol_parameter(current_scope, current_scope, $2, sem_nature_id, $1, &delayed_param_error, &error_identifier);
 };
 parameter_list: parameter_list ',' type identifier { 
     $$ = $1;
     variable_names_t *temp = ast_variable_names_new();
     ast_variable_names_add_child(temp, $4);
     ast_parameters_add_child($$, ast_variable_new($3, temp));
-    register_symbol(current_scope, $4, sem_nature_id, $3);
+    register_symbol_parameter(current_scope, current_scope, $4, sem_nature_id, $3, &delayed_param_error, &error_identifier);
 };
 
 block: open_block '{' block_body '}' close_block { $$ = $3; };
 block_body: %empty { $$ = ast_block_new(); };
 block_body: block_body command ';' { $$ = $1; ast_block_add_child($$, $2); };
 
-command: variable { $$ = ast_command_new_variable($1); };
+command: lvariable { $$ = ast_command_new_variable($1); };
 command: attribution { $$ = ast_command_new_attribution($1); };
-command: call { $$ = ast_command_new_call($1); /* TODO: check type */ };
+command: call { $$ = ast_command_new_call($1); };
 command: return_ { $$ = ast_command_new_return($1); };
 command: if_ { $$ = ast_command_new_if($1); };
 command: while_ { $$ = ast_command_new_while($1); };
 command: block { $$ = ast_command_new_block($1); };
 
-attribution: identifier '=' expression { $$ = ast_attribution_new($1, $3); }
+attribution: identifier '=' expression {
+    $$ = ast_attribution_new($1, $3);
+
+    sym_val_t *val = sym_tab_find(current_scope, $1->text);
+    //sym_value_print(val);
+    if (val == NULL) {
+        printf("Erro semantico: variavel \"%s\" foi utilizada antes de ser declarada.\n", $1->text);
+        printf("- Contexto: attribuicao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
+        exit(ERR_UNDECLARED);
+    }
+    if (val->nature == sem_nature_func) {
+        exit(ERR_FUNCTION);
+    }
+}
 call: identifier '(' arguments ')' {
     $$ = ast_call_new($1, $3);
     sym_val_t *val = sym_tab_find(current_scope, $1->text);
     if (val == NULL) {
-        // TODO: write better message
-        printf("Name `%s` was not defined.\n", $1->text);
+        printf("Erro semantico: variavel \"%s\" foi utilizada antes de ser declarada.\n", $1->text);
+        printf("- Contexto: chamada de funcao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
         exit(ERR_UNDECLARED);
     }
     if (val->nature == sem_nature_id) {
-        printf("Name `%s` was used as function, but is variable.\n", $1->text);
+        printf("Erro semantico: variavel \"%s\" foi utilizada como funcao.\n", $1->text);
+        printf("- Contexto: linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
         exit(ERR_VARIABLE);
     }
     $$->type = val->type;
 
+    // Useful debugging tool!
+    /*
     if (strcmp($1->text, "print_type") == 0) {
         if ($3->len == 1) {
             fprintf(stderr, "The type of `");
@@ -198,6 +253,7 @@ call: identifier '(' arguments ')' {
             fprintf(stderr, "` is `%s`\n", ast_type_to_string($3->arguments[0]->type));
         }
     }
+    */
 };
 arguments: %empty { $$ = ast_arguments_new(); };
 arguments: argument_list { $$ = $1; };
@@ -235,16 +291,26 @@ expr_v: '(' expression ')' { $$ = $2; };
 expr_v: literal { $$ = ast_expression_new_literal($1); };
 expr_v: identifier {
     $$ = ast_expression_new_identifier($1);
-    /* TODO: check type */
+
     sym_val_t *val = sym_tab_find(current_scope, $1->text);
-    sym_value_print(val);
     if (val == NULL) {
-        // TODO: write better message
-        printf("Name `%s` was not defined.\n", $1->text);
+        printf("Erro semantico: variavel \"%s\" foi utilizada antes de ser declarada.\n", $1->text);
+        printf("- Contexto: expressao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
         exit(ERR_UNDECLARED);
     }
     if (val->nature == sem_nature_func) {
-        printf("Name `%s` was used as variable, but is function.\n", $1->text);
+        printf("Erro semantico: funcao \"%s\" foi utilizada como variavel.\n", $1->text);
+        printf("- Contexto: expressao na linha %lld, coluna %lld\n", $1->lexeme.line, $1->lexeme.column);
+        sym_tab_t *global_scope = current_scope;
+        while (global_scope->parent != NULL) {
+            global_scope = global_scope->parent;
+        }
+        printf("- Contexto: dentro da funcao \"%s\"\n", global_scope->list->key);
         exit(ERR_FUNCTION);
     }
     $$->type = val->type;

@@ -125,6 +125,12 @@ ast_type_t infer_type(ast_type_t left, ast_type_t right);
 
 // void handle_variable_attribution(ast_t *self, ast_t *identifier, ast_t *expr);
 
-void register_symbol(sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type);
+void register_symbol_global_variable(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type);
+
+void register_symbol_function(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type);
+
+void register_symbol_parameter(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type, int *delayed_param_error, identifier_t **error_identifier);
+
+void register_symbol_local_variable(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type);
 
 #endif // !SEMANTICS
