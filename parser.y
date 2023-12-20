@@ -260,9 +260,9 @@ arguments: argument_list { $$ = $1; };
 argument_list: expression { $$ = ast_arguments_new(); ast_arguments_add_child($$, $1); };
 argument_list: argument_list ',' expression { $$ = $1; ast_arguments_add_child($$, $3); };
 return_: TK_PR_RETURN expression { $$ = ast_return_new($2); };
-if_: TK_PR_IF '(' expression ')' block TK_PR_ELSE block { $$ = ast_if_new($3, $5, $7); };
-if_: TK_PR_IF '(' expression ')' block                  { $$ = ast_if_new($3, $5, ast_block_new()); };
-while_: TK_PR_WHILE '(' expression ')' block { $$ = ast_while_new($3, $5); };
+if_: TK_PR_IF '(' expression ')' '{' block_body '}' TK_PR_ELSE block { $$ = ast_if_new($3, $6, $9); };
+if_: TK_PR_IF '(' expression ')' '{' block_body '}'                  { $$ = ast_if_new($3, $6, ast_block_new()); };
+while_: TK_PR_WHILE '(' expression ')' '{' block_body '}' { $$ = ast_while_new($3, $6); };
 
 expression: expr_7 { $$ = $1; };
 expr_1: expr_v { $$ = $1; };

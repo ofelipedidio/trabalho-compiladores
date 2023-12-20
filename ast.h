@@ -1,17 +1,17 @@
 #ifndef AST
 #define AST
 
-#include "lexeme.h"
 #include <inttypes.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "lexeme.h"
+#include "code_gen.h"
 
 /* ##############
  * # Structures #
  * ############## */
-
 enum bin_op {
     op_mul,
     op_div,
@@ -92,11 +92,13 @@ typedef enum   un_op              un_op;
 struct ast_program {
     global_t **globals;
     uint64_t len;
+    iloc_program_t *program;
 };
 
 struct ast_global {
     function_t *function;
     variable_t *variable;
+    iloc_program_t *program;
 };
 
 struct ast_function {
@@ -104,21 +106,25 @@ struct ast_function {
     parameters_t *parameters;
     ast_type_t type;
     block_t *body;
+    iloc_program_t *program;
 };
 
 struct ast_parameters {
     variable_t **variables;
     uint64_t len;
+    iloc_program_t *program;
 };
 
 struct ast_variable {
     ast_type_t type;
     variable_names_t *names;
+    iloc_program_t *program;
 };
 
 struct ast_variable_names {
     identifier_t **names;
     uint64_t len;
+    iloc_program_t *program;
 };
 
 struct ast_command {
@@ -130,28 +136,33 @@ struct ast_command {
     while_t *_while;
     block_t *block;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_attribution {
     identifier_t *variable_name;
     expression_t *expression;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_call {
     identifier_t *function_name;
     arguments_t *arguments;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_arguments {
     expression_t **arguments;
     uint64_t len;
+    iloc_program_t *program;
 };
 
 struct ast_return {
     expression_t *expression;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_if {
@@ -159,17 +170,20 @@ struct ast_if {
     block_t *then_block;
     block_t *else_block;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_while {
     expression_t *condition;
     block_t *block;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_block {
     command_t **commands;
     uint64_t len;
+    iloc_program_t *program;
 };
 
 struct ast_expression {
@@ -179,6 +193,7 @@ struct ast_expression {
     literal_t *literal;
     identifier_t *identifier;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_bin_op {
@@ -186,12 +201,14 @@ struct ast_bin_op {
     expression_t *left;
     expression_t *right;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_un_op {
     un_op op;
     expression_t *expression;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_literal {
@@ -199,21 +216,25 @@ struct ast_literal {
     ast_float_t *_float;
     ast_bool_t *_bool;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 struct ast_int {
     int value;
     lexeme_t lexeme;
+    iloc_program_t *program;
 };
 
 struct ast_float {
     float value;
     lexeme_t lexeme;
+    iloc_program_t *program;
 };
 
 struct ast_bool {
     int value;
     lexeme_t lexeme;
+    iloc_program_t *program;
 };
 
 struct ast_identifier {
@@ -221,6 +242,7 @@ struct ast_identifier {
     uint64_t len;
     lexeme_t lexeme;
     ast_type_t type;
+    iloc_program_t *program;
 };
 
 /* ################
@@ -322,14 +344,37 @@ void *ast_float_export(ast_float_t *_float);
 void *ast_bool_export(ast_bool_t *_bool);
 void *ast_identifier_export(identifier_t *identifier);
 
-char *ast_call_print(call_t *call);
-char *ast_expression_print(expression_t *expression);
-char *ast_bin_op_print(bin_op_t *bin_op);
-char *ast_un_op_print(un_op_t *un_op);
-char *ast_literal_print(literal_t *literal);
-char *ast_int_print(ast_int_t *_int);
-char *ast_float_print(ast_float_t *_float);
-char *ast_bool_print(ast_bool_t *_bool);
-char *ast_identifier_print(identifier_t *identifier);
+void ast_call_print(call_t *call);
+void ast_expression_print(expression_t *expression);
+void ast_bin_op_print(bin_op_t *bin_op);
+void ast_un_op_print(un_op_t *un_op);
+void ast_literal_print(literal_t *literal);
+void ast_int_print(ast_int_t *_int);
+void ast_float_print(ast_float_t *_float);
+void ast_bool_print(ast_bool_t *_bool);
+void ast_identifier_print(identifier_t *identifier);
+
+void ast_program_print_program(program_t *program);
+void ast_global_print_program(global_t *global);
+void ast_function_print_program(function_t *function);
+void ast_parameters_print_program(parameters_t *parameters);
+void ast_variable_print_program(variable_t *variable);
+void ast_variable_names_print_program(variable_names_t *names);
+void ast_command_print_program(command_t *command);
+void ast_attribution_print_program(attribution_t *attribution);
+void ast_call_print_program(call_t *call);
+void ast_arguments_print_program(arguments_t *arguments);
+void ast_return_print_program(return_t *_return);
+void ast_if_print_program(if_t *_if);
+void ast_while_print_program(while_t *_while);
+void ast_block_print_program(block_t *block);
+uint64_t ast_expression_print_program(expression_t *expression);
+uint64_t ast_bin_op_print_program(bin_op_t *bin_op);
+uint64_t ast_un_op_print_program(un_op_t *un_op);
+uint64_t ast_literal_print_program(literal_t *literal);
+uint64_t ast_int_print_program(ast_int_t *_int);
+uint64_t ast_float_print_program(ast_float_t *_float);
+uint64_t ast_bool_print_program(ast_bool_t *_bool);
+uint64_t ast_identifier_print_program(identifier_t *identifier);
 
 #endif // !AST

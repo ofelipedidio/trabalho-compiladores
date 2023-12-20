@@ -4,16 +4,21 @@
 #include "ast.h"
 #include "lexeme.h"
 
-#define ERR_UNDECLARED 10 //2.2
-#define ERR_DECLARED 11 //2.2
-#define ERR_VARIABLE 20 //2.3
-#define ERR_FUNCTION 21 //2.3
+#define ERR_UNDECLARED 10 // 2.2
+#define ERR_DECLARED   11 // 2.2
+#define ERR_VARIABLE   20 // 2.3
+#define ERR_FUNCTION   21 // 2.3
 
 typedef enum {
     sem_nature_lit,
     sem_nature_id,
     sem_nature_func,
 } sem_nature_t;
+
+typedef enum {
+    sem_global,
+    sem_local,
+} sem_var_location_t;
 
 typedef char* sym_key_t;
 
@@ -23,6 +28,8 @@ typedef struct {
     sem_nature_t nature;
     ast_type_t type;
     lexeme_t lex;
+    sem_var_location_t location;
+    uint64_t offset;
 } sym_val_t;
 
 typedef struct sym_list {
@@ -35,7 +42,10 @@ typedef struct sym_list {
 typedef struct node_tab_t {
     sym_list_t *list;
     struct node_tab_t *parent;
+    uint64_t scope_size;
 } sym_tab_t;
+
+uint64_t ast_type_size(ast_type_t type);
 
 /*
  * This function initializes the list and returns a pointer to it.

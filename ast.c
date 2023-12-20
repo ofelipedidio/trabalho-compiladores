@@ -1,7 +1,8 @@
 #include "ast.h"
+#include "code_gen.h"
 #include "lexeme.h"
 
-#include <linux/limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,8 +30,15 @@ program_t *ast_program_new() {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(globals);
+        free(program);
+        return NULL;
+    }
     program->globals = globals;
     program->len = 0;
+    program->program = iloc_program;
     return program;
 }
 
@@ -43,8 +51,14 @@ global_t *ast_global_new_function(function_t *function) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(global);
+        return NULL;
+    }
     global->function = function;
     global->variable = NULL;
+    global->program = iloc_program;
     return global;
 }
 
@@ -57,8 +71,14 @@ global_t *ast_global_new_variable(variable_t *variable) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(global);
+        return NULL;
+    }
     global->function = NULL;
     global->variable = variable;
+    global->program = iloc_program;
     return global;
 }
 
@@ -72,10 +92,16 @@ function_t *ast_function_new(identifier_t *name, ast_type_t type,
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(function);
+        return NULL;
+    }
     function->name = name;
     function->type = type;
     function->parameters = parameters;
     function->body = body;
+    function->program = iloc_program;
     return function;
 }
 
@@ -97,8 +123,15 @@ parameters_t *ast_parameters_new() {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(variables);
+        free(parameters);
+        return NULL;
+    }
     parameters->variables = variables;
     parameters->len = 0;
+    parameters->program = iloc_program;
     return parameters;
 }
 
@@ -111,8 +144,14 @@ variable_t *ast_variable_new(ast_type_t type, variable_names_t *names) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(variable);
+        return NULL;
+    }
     variable->type = type;
     variable->names = names;
+    variable->program = iloc_program;
     return variable;
 }
 
@@ -128,8 +167,15 @@ variable_names_t *ast_variable_names_new() {
         fprintf(stderr, "Failed to allocate memory for identifier_t* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(names);
+        free(variable_names);
+        return NULL;
+    }
     variable_names->names = names;
     variable_names->len = 0;
+    variable_names->program = iloc_program;
     return variable_names;
 }
 
@@ -142,6 +188,11 @@ command_t *ast_command_new_variable(variable_t *variable) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(command);
+        return NULL;
+    }
     command->variable = variable;
     command->attribution = NULL;
     command->call = NULL;
@@ -150,6 +201,7 @@ command_t *ast_command_new_variable(variable_t *variable) {
     command->_while = NULL;
     command->block = NULL;
     command->type = variable->type;
+    command->program = iloc_program;
     return command;
 }
 
@@ -162,6 +214,11 @@ command_t *ast_command_new_attribution(attribution_t *attribution) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(command);
+        return NULL;
+    }
     command->variable = NULL;
     command->attribution = attribution;
     command->call = NULL;
@@ -170,6 +227,7 @@ command_t *ast_command_new_attribution(attribution_t *attribution) {
     command->_while = NULL;
     command->block = NULL;
     command->type = attribution->type;
+    command->program = iloc_program;
     return command;
 }
 
@@ -182,6 +240,11 @@ command_t *ast_command_new_call(call_t *call) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(command);
+        return NULL;
+    }
     command->variable = NULL;
     command->attribution = NULL;
     command->call = call;
@@ -190,6 +253,7 @@ command_t *ast_command_new_call(call_t *call) {
     command->_while = NULL;
     command->block = NULL;
     command->type = call->type;
+    command->program = iloc_program;
     return command;
 }
 
@@ -202,6 +266,11 @@ command_t *ast_command_new_return(return_t *_return) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(command);
+        return NULL;
+    }
     command->variable = NULL;
     command->attribution = NULL;
     command->call = NULL;
@@ -210,6 +279,7 @@ command_t *ast_command_new_return(return_t *_return) {
     command->_return = _return;
     command->block = NULL;
     command->type = _return->type;
+    command->program = iloc_program;
     return command;
 }
 
@@ -222,6 +292,11 @@ command_t *ast_command_new_if(if_t *_if) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(command);
+        return NULL;
+    }
     command->variable = NULL;
     command->attribution = NULL;
     command->call = NULL;
@@ -230,6 +305,7 @@ command_t *ast_command_new_if(if_t *_if) {
     command->_while = NULL;
     command->block = NULL;
     command->type = _if->type;
+    command->program = iloc_program;
     return command;
 }
 
@@ -242,6 +318,11 @@ command_t *ast_command_new_while(while_t *_while) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(command);
+        return NULL;
+    }
     command->variable = NULL;
     command->attribution = NULL;
     command->call = NULL;
@@ -250,6 +331,7 @@ command_t *ast_command_new_while(while_t *_while) {
     command->_while = _while;
     command->block = NULL;
     command->type = _while->type;
+    command->program = iloc_program;
     return command;
 }
 
@@ -262,6 +344,11 @@ command_t *ast_command_new_block(block_t *block) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(command);
+        return NULL;
+    }
     command->variable = NULL;
     command->attribution = NULL;
     command->call = NULL;
@@ -270,6 +357,7 @@ command_t *ast_command_new_block(block_t *block) {
     command->_while = NULL;
     command->block = block;
     command->type = ast_type_undefined;
+    command->program = iloc_program;
     return command;
 }
 
@@ -282,9 +370,15 @@ attribution_t *ast_attribution_new(identifier_t *variable_name, expression_t *ex
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(attribution);
+        return NULL;
+    }
     attribution->variable_name = variable_name;
     attribution->expression = expression;
     attribution->type = ast_type_undefined;
+    attribution->program = iloc_program;
     return attribution;
 }
 
@@ -298,9 +392,15 @@ call_t *ast_call_new(identifier_t *function_name, arguments_t *arguments) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(call);
+        return NULL;
+    }
     call->function_name = function_name;
     call->arguments = arguments;
     call->type = ast_type_undefined;
+    call->program = iloc_program;
     return call;
 }
 
@@ -323,8 +423,15 @@ arguments_t *ast_arguments_new() {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(arguments);
+        free(arguments);
+        return NULL;
+    }
     arguments->arguments = argument_list;
     arguments->len = 0;
+    arguments->program = iloc_program;
     return arguments;
 }
 
@@ -334,8 +441,14 @@ return_t *ast_return_new(expression_t *expression) {
         fprintf(stderr, "Failed to allocate memory for return_t (errno = %d) [at file " "\"" __FILE__ "\", line %d]\n", errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(_return);
+        return NULL;
+    }
     _return->expression = expression;
     _return->type = expression->type;
+    _return->program = iloc_program;
     return _return;
 }
 
@@ -350,10 +463,16 @@ if_t *ast_if_new(expression_t *condition, block_t *then_block,
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(_if);
+        return NULL;
+    }
     _if->condition = condition;
     _if->then_block = then_block;
     _if->else_block = else_block;
     _if->type = condition->type;
+    _if->program = iloc_program;
     return _if;
 }
 
@@ -366,9 +485,15 @@ while_t *ast_while_new(expression_t *condition, block_t *block) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(_while);
+        return NULL;
+    }
     _while->condition = condition;
     _while->block = block;
     _while->type = condition->type;
+    _while->program = iloc_program;
     return _while;
 }
 
@@ -390,8 +515,15 @@ block_t *ast_block_new() {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(commands);
+        free(block);
+        return NULL;
+    }
     block->commands = commands;
     block->len = 0;
+    block->program = iloc_program;
     return block;
 }
 
@@ -404,12 +536,18 @@ expression_t *ast_expression_new_bin_op(bin_op_t *_bin_op) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(expression);
+        return NULL;
+    }
     expression->_bin_op = _bin_op;
     expression->_un_op = NULL;
     expression->call = NULL;
     expression->identifier = NULL;
     expression->literal = NULL;
     expression->type = _bin_op->type;
+    expression->program = iloc_program;
     return expression;
 }
 
@@ -422,12 +560,18 @@ expression_t *ast_expression_new_un_op(un_op_t *_un_op) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(expression);
+        return NULL;
+    }
     expression->_bin_op = NULL;
     expression->_un_op = _un_op;
     expression->call = NULL;
     expression->identifier = NULL;
     expression->literal = NULL;
     expression->type = _un_op->type;
+    expression->program = iloc_program;
     return expression;
 }
 
@@ -440,12 +584,18 @@ expression_t *ast_expression_new_call(call_t *call) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(expression);
+        return NULL;
+    }
     expression->_bin_op = NULL;
     expression->_un_op = NULL;
     expression->call = call;
     expression->identifier = NULL;
     expression->literal = NULL;
     expression->type = call->type;
+    expression->program = iloc_program;
     return expression;
 }
 
@@ -458,12 +608,18 @@ expression_t *ast_expression_new_identifier(identifier_t *identifier) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(expression);
+        return NULL;
+    }
     expression->_bin_op = NULL;
     expression->_un_op = NULL;
     expression->call = NULL;
     expression->identifier = identifier;
     expression->literal = NULL;
     expression->type = identifier->type;
+    expression->program = iloc_program;
     return expression;
 }
 
@@ -476,12 +632,18 @@ expression_t *ast_expression_new_literal(literal_t *literal) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(expression);
+        return NULL;
+    }
     expression->_bin_op = NULL;
     expression->_un_op = NULL;
     expression->call = NULL;
     expression->identifier = NULL;
     expression->literal = literal;
     expression->type = literal->type;
+    expression->program = iloc_program;
     return expression;
 }
 
@@ -494,10 +656,16 @@ bin_op_t *ast_bin_op_new(bin_op op, expression_t *left, expression_t *right) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(bin_op);
+        return NULL;
+    }
     bin_op->op = op;
     bin_op->left = left;
     bin_op->right = right;
     bin_op->type = infer_type(left->type, right->type);
+    bin_op->program = iloc_program;
     return bin_op;
 }
 
@@ -510,9 +678,15 @@ un_op_t *ast_un_op_new(un_op op, expression_t *expression) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(un_op);
+        return NULL;
+    }
     un_op->op = op;
     un_op->expression = expression;
     un_op->type = expression->type;
+    un_op->program = iloc_program;
     return un_op;
 };
 
@@ -525,10 +699,16 @@ literal_t *ast_literal_new_int(ast_int_t *_int) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(literal);
+        return NULL;
+    }
     literal->_int = _int;
     literal->_float = NULL;
     literal->_bool = NULL;
     literal->type = ast_int;
+    literal->program = iloc_program;
     return literal;
 }
 
@@ -541,10 +721,16 @@ literal_t *ast_literal_new_float(ast_float_t *_float) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(literal);
+        return NULL;
+    }
     literal->_int = NULL;
     literal->_float = _float;
     literal->_bool = NULL;
     literal->type = ast_float;
+    literal->program = iloc_program;
     return literal;
 }
 
@@ -557,10 +743,16 @@ literal_t *ast_literal_new_bool(ast_bool_t *_bool) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(literal);
+        return NULL;
+    }
     literal->_int = NULL;
     literal->_float = NULL;
     literal->_bool = _bool;
     literal->type = ast_bool;
+    literal->program = iloc_program;
     return literal;
 }
 
@@ -574,8 +766,14 @@ ast_int_t *ast_int_new(int value, lexeme_t lexeme) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(_int);
+        return NULL;
+    }
     _int->value = value;
     _int->lexeme = lexeme;
+    _int->program = iloc_program;
     return _int;
 }
 
@@ -588,8 +786,14 @@ ast_float_t *ast_float_new(float value, lexeme_t lexeme) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(_float);
+        return NULL;
+    }
     _float->value = value;
     _float->lexeme = lexeme;
+    _float->program = iloc_program;
     return _float;
 }
 
@@ -603,8 +807,14 @@ ast_bool_t *ast_bool_new_true(lexeme_t lexeme) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(_bool);
+        return NULL;
+    }
     _bool->value = 1;
     _bool->lexeme = lexeme;
+    _bool->program = iloc_program;
     return _bool;
 }
 
@@ -618,8 +828,14 @@ ast_bool_t *ast_bool_new_false(lexeme_t lexeme) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(_bool);
+        return NULL;
+    }
     _bool->value = 0;
     _bool->lexeme = lexeme;
+    _bool->program = iloc_program;
     return _bool;
 }
 
@@ -632,10 +848,16 @@ identifier_t *ast_identifier_new(char *text, lexeme_t lexeme) {
                 errno, __LINE__ - 2);
         return NULL;
     }
+    iloc_program_t *iloc_program = iloc_program_new();
+    if (iloc_program == NULL) {
+        free(identifier);
+        return NULL;
+    }
     identifier->text = strdup(text);
     identifier->len = strlen(text);
     identifier->lexeme = lexeme;
     identifier->type = ast_type_undefined;
+    identifier->program = iloc_program;
     return identifier;
 }
 
@@ -646,6 +868,7 @@ void ast_program_free(program_t *program) {
     for (uint64_t i = 0; i < program->len; i++) {
         ast_global_free(program->globals[i]);
     }
+    iloc_program_free(program->program);
     free(program->globals);
     free(program);
 };
@@ -657,10 +880,12 @@ void ast_global_free(global_t *global) {
     if (global->function != NULL) {
         ast_function_free(global->function);
     }
+    iloc_program_free(global->program);
     free(global);
 };
 
 void ast_function_free(function_t *function) {
+    iloc_program_free(function->program);
     ast_identifier_free(function->name);
     ast_parameters_free(function->parameters);
     ast_block_free(function->body);
@@ -671,11 +896,13 @@ void ast_parameters_free(parameters_t *parameters) {
     for (uint64_t i = 0; i < parameters->len; i++) {
         ast_variable_free(parameters->variables[i]);
     }
+    iloc_program_free(parameters->program);
     free(parameters->variables);
     free(parameters);
 };
 
 void ast_variable_free(variable_t *variable) {
+    iloc_program_free(variable->program);
     ast_variable_names_free(variable->names);
     free(variable);
 };
@@ -684,6 +911,7 @@ void ast_variable_names_free(variable_names_t *names) {
     for (uint64_t i = 0; i < names->len; i++) {
         ast_identifier_free(names->names[i]);
     }
+    iloc_program_free(names->program);
     free(names->names);
     free(names);
 }
@@ -707,16 +935,19 @@ void ast_command_free(command_t *command) {
     if (command->block) {
         ast_block_free(command->block);
     }
+    iloc_program_free(command->program);
     free(command);
 };
 
 void ast_attribution_free(attribution_t *attribution) {
+    iloc_program_free(attribution->program);
     ast_identifier_free(attribution->variable_name);
     ast_expression_free(attribution->expression);
     free(attribution);
 };
 
 void ast_call_free(call_t *call) {
+    iloc_program_free(call->program);
     ast_identifier_free(call->function_name);
     ast_arguments_free(call->arguments);
     free(call);
@@ -726,16 +957,19 @@ void ast_arguments_free(arguments_t *arguments) {
     for (uint64_t i = 0; i < arguments->len; i++) {
         ast_expression_free(arguments->arguments[i]);
     }
+    iloc_program_free(arguments->program);
     free(arguments->arguments);
     free(arguments);
 };
 
 void ast_return_free(return_t *_return) {
+    iloc_program_free(_return->program);
     ast_expression_free(_return->expression);
     free(_return);
 };
 
 void ast_if_free(if_t *_if) {
+    iloc_program_free(_if->program);
     ast_expression_free(_if->condition);
     ast_block_free(_if->then_block);
     ast_block_free(_if->else_block);
@@ -743,6 +977,7 @@ void ast_if_free(if_t *_if) {
 };
 
 void ast_while_free(while_t *_while) {
+    iloc_program_free(_while->program);
     ast_expression_free(_while->condition);
     ast_block_free(_while->block);
     free(_while);
@@ -752,6 +987,7 @@ void ast_block_free(block_t *block) {
     for (uint64_t i = 0; i < block->len; i++) {
         ast_command_free(block->commands[i]);
     }
+    iloc_program_free(block->program);
     free(block->commands);
     free(block);
 };
@@ -769,16 +1005,19 @@ void ast_expression_free(expression_t *expression) {
     if (expression->identifier != NULL) {
         ast_identifier_free(expression->identifier);
     }
+    iloc_program_free(expression->program);
     free(expression);
 };
 
 void ast_bin_op_free(bin_op_t *bin_op) {
+    iloc_program_free(bin_op->program);
     ast_expression_free(bin_op->left);
     ast_expression_free(bin_op->right);
     free(bin_op);
 };
 
 void ast_un_op_free(un_op_t *un_op) {
+    iloc_program_free(un_op->program);
     ast_expression_free(un_op->expression);
     free(un_op);
 };
@@ -793,25 +1032,30 @@ void ast_literal_free(literal_t *literal) {
     if (literal->_bool != NULL) {
         ast_bool_free(literal->_bool);
     }
+    iloc_program_free(literal->program);
     free(literal);
 };
 
 void ast_int_free(ast_int_t *_int) { 
+    iloc_program_free(_int->program); 
     lexeme_free(_int->lexeme);
     free(_int); 
 };
 
 void ast_float_free(ast_float_t *_float) {
+    iloc_program_free(_float->program);
     lexeme_free(_float->lexeme);
     free(_float);
 };
 
 void ast_bool_free(ast_bool_t *_bool) {
+    iloc_program_free(_bool->program);
     lexeme_free(_bool->lexeme);
     free(_bool);
 };
 
 void ast_identifier_free(identifier_t *identifier) {
+    iloc_program_free(identifier->program);
     lexeme_free(identifier->lexeme);
     free(identifier->text);
     free(identifier);
@@ -1117,7 +1361,7 @@ void *ast_identifier_export(identifier_t *identifier) {
     return identifier;
 }
 
-char *ast_call_print(call_t *call) {
+void ast_call_print(call_t *call) {
     fprintf(stderr, "%s(", call->function_name->text);
     for (uint64_t i = 0; i < call->arguments->len; i++) {
         if (i > 0) {
@@ -1128,7 +1372,7 @@ char *ast_call_print(call_t *call) {
     fprintf(stderr, ")");
 }
 
-char *ast_expression_print(expression_t *expression) {
+void ast_expression_print(expression_t *expression) {
     if (expression->literal != NULL) {
         return ast_literal_print(expression->literal);
     } else if (expression->call != NULL) {
@@ -1142,7 +1386,7 @@ char *ast_expression_print(expression_t *expression) {
     }
 }
 
-char *ast_bin_op_print(bin_op_t *_bin_op) {
+void ast_bin_op_print(bin_op_t *_bin_op) {
     fprintf(stderr, "(");
     ast_expression_print(_bin_op->left);
     fprintf(stderr, ") %s (", bin_op_label(_bin_op->op));
@@ -1150,12 +1394,12 @@ char *ast_bin_op_print(bin_op_t *_bin_op) {
     fprintf(stderr, ")");
 }
 
-char *ast_un_op_print(un_op_t *_un_op) {
+void ast_un_op_print(un_op_t *_un_op) {
     fprintf(stderr, "%s", un_op_label(_un_op->op));
     ast_expression_print(_un_op->expression);
 }
 
-char *ast_literal_print(literal_t *literal) {
+void ast_literal_print(literal_t *literal) {
     if (literal->_int != NULL) {
         fprintf(stderr, "%d", literal->_int->value);
     } else if (literal->_float != NULL) {
@@ -1165,8 +1409,257 @@ char *ast_literal_print(literal_t *literal) {
     }
 }
 
-char *ast_identifier_print(identifier_t *identifier) {
+void ast_identifier_print(identifier_t *identifier) {
     fprintf(stderr, "%s", identifier->text);
 }
 
+void ast_program_print_program(program_t *program) {
+    iloc_program_to_string(program->program);
+}
+
+void ast_global_print_program(global_t *global) {
+    iloc_program_to_string(global->program);
+}
+
+void ast_function_print_program(function_t *function) {
+    iloc_program_to_string(function->program);
+}
+
+void ast_parameters_print_program(parameters_t *parameters) {
+    iloc_program_to_string(parameters->program);
+}
+
+void ast_variable_print_program(variable_t *variable) {
+    iloc_program_to_string(variable->program);
+}
+
+void ast_variable_names_print_program(variable_names_t *names) {
+    iloc_program_to_string(names->program);
+}
+
+void ast_command_print_program(command_t *command) {
+    iloc_program_to_string(command->program);
+}
+
+void ast_attribution_print_program(attribution_t *attribution) {
+    iloc_program_to_string(attribution->program);
+}
+
+void ast_call_print_program(call_t *call) {
+    iloc_program_to_string(call->program);
+}
+
+void ast_arguments_print_program(arguments_t *arguments) {
+    iloc_program_to_string(arguments->program);
+}
+
+void ast_return_print_program(return_t *_return) {
+    iloc_program_to_string(_return->program);
+}
+
+void ast_if_print_program(if_t *_if) {
+    iloc_program_to_string(_if->program);
+}
+
+void ast_while_print_program(while_t *_while) {
+    iloc_program_to_string(_while->program);
+}
+
+void ast_block_print_program(block_t *block) {
+    iloc_program_to_string(block->program);
+}
+
+uint64_t ast_expression_print_program(expression_t *expression) {
+    if (expression->_un_op != NULL) {
+    } else if (expression->_bin_op != NULL) {
+    } else if (expression->call != NULL) {
+    } else if (expression->literal != NULL) {
+    } else if (expression->identifier != NULL) {
+    }
+}
+
+uint64_t ast_bin_op_print_program(bin_op_t *bin_op) {
+    uint64_t left_value = ast_expression_print_program(bin_op->left);
+    uint64_t right_value = ast_expression_print_program(bin_op->right);
+
+    uint64_t value = iloc_next_id();
+
+    uint64_t temp = iloc_next_id();
+    uint64_t condition;
+    uint64_t check_right = iloc_next_id();
+    uint64_t case_true = iloc_next_id();
+    uint64_t case_false = iloc_next_id();
+    uint64_t done = iloc_next_id();
+
+    iloc_program_append(bin_op->program, bin_op->left->program);
+
+    switch (bin_op->op) {
+        case op_mul:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(mult, left_value, right_value, value));
+            break;
+        case op_div:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(_div, left_value, right_value, value));
+            break;
+        case op_mod:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(_div, left_value, right_value, value));
+            iloc_program_push(bin_op->program, iloc_instruction_new(mult, value, right_value, temp));
+            iloc_program_push(bin_op->program, iloc_instruction_new(sub, left_value, temp, value));
+            break;
+        case op_add:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(add, left_value, right_value, value));
+            break;
+        case op_sub:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(sub, left_value, right_value, value));
+            break;
+        case op_lt:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_lt, left_value, right_value, value));
+            break;
+        case op_gt:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_gt, left_value, right_value, value));
+            break;
+        case op_le:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_le, left_value, right_value, value));
+            break;
+        case op_ge:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_ge, left_value, right_value, value));
+            break;
+        case op_eq:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_eq, left_value, right_value, value));
+            break;
+        case op_ne:
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_ne, left_value, right_value, value));
+            break;
+        case op_and:
+            // Preparation
+            iloc_program_push(bin_op->program, iloc_instruction_new(load_i, 0, temp, 0));
+            // Compare left
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_eq, temp, left_value, condition));
+            iloc_program_push(bin_op->program, iloc_instruction_new(cbr, condition, case_false, check_right));
+            // Compare right
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, check_right, 0, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_eq, temp, right_value, condition));
+            iloc_program_push(bin_op->program, iloc_instruction_new(cbr, condition, case_false, case_true));
+            // If the expression evaluates to true, set value to true
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, case_true, 0, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(load_i, 1, value, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(jump_i, done, 0, 0));
+            // If the expression evaluates to false, set value to false
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, case_false, 0, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(load_i, 0, value, 0));
+            // Extra label to end the evaluation of the expression
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, done, 0, 0));
+            break;
+
+        case op_or:
+            // Preparation
+            iloc_program_push(bin_op->program, iloc_instruction_new(load_i, 0, temp, 0));
+            // Compare left
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_eq, temp, left_value, condition));
+            iloc_program_push(bin_op->program, iloc_instruction_new(cbr, condition, check_right, case_true));
+            // Compare right
+            iloc_program_append(bin_op->program, bin_op->right->program);
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, check_right, 0, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(cmp_eq, temp, right_value, condition));
+            iloc_program_push(bin_op->program, iloc_instruction_new(cbr, condition, case_false, case_true));
+            // If the expression evaluates to true, set value to true
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, case_true, 0, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(load_i, 1, value, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(jump_i, done, 0, 0));
+            // If the expression evaluates to false, set value to false
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, case_false, 0, 0));
+            iloc_program_push(bin_op->program, iloc_instruction_new(load_i, 0, value, 0));
+            // Extra label to end the evaluation of the expression
+            iloc_program_push(bin_op->program, iloc_instruction_new(label, done, 0, 0));
+            break;
+    }
+
+    return value;
+}
+
+uint64_t ast_un_op_print_program(un_op_t *un_op) {
+    uint64_t expr_value = ast_expression_print_program(un_op->expression);
+    uint64_t value = iloc_next_id();
+    uint64_t temp = iloc_next_id();
+    uint64_t condition;
+    uint64_t case_true = iloc_next_id();
+    uint64_t case_false = iloc_next_id();
+    uint64_t done = iloc_next_id();
+
+    switch (un_op->op) {
+        case op_inv:
+            iloc_program_push(un_op->program, iloc_instruction_new(rsub_i, expr_value, 0, value));
+            break;
+        case op_not:
+            iloc_program_push(un_op->program, iloc_instruction_new(load_i, 0, temp, 0));
+            iloc_program_push(un_op->program, iloc_instruction_new(cmp_eq, temp, expr_value, condition));
+            iloc_program_push(un_op->program, iloc_instruction_new(cbr, condition, case_false, case_true));
+            iloc_program_push(un_op->program, iloc_instruction_new(label, case_true, 0, 0));
+            iloc_program_push(un_op->program, iloc_instruction_new(load_i, 0, value, 0));
+            iloc_program_push(un_op->program, iloc_instruction_new(jump_i, done, 0, 0));
+            iloc_program_push(un_op->program, iloc_instruction_new(label, case_false, 0, 0));
+            iloc_program_push(un_op->program, iloc_instruction_new(load_i, 1, value, 0));
+            iloc_program_push(un_op->program, iloc_instruction_new(label, done, 0, 0));
+            break;
+    }
+
+    return value;
+}
+
+uint64_t ast_literal_print_program(literal_t *literal) {
+    iloc_program_t *inner_program;
+    uint64_t value;
+    if (literal->_bool != NULL) {
+        inner_program = literal->_bool->program;
+        value = ast_bool_print_program(literal->_bool);
+    } else if (literal->_int != NULL) {
+        inner_program = literal->_int->program;
+        value = ast_int_print_program(literal->_int);
+    } else {
+        inner_program = literal->_float->program;
+        value = ast_float_print_program(literal->_float);
+    }
+    iloc_program_append(literal->program, inner_program);
+    return value;
+}
+
+uint64_t ast_int_print_program(ast_int_t *_int) {
+    uint64_t value = iloc_next_id();
+    iloc_program_push(_int->program, iloc_instruction_new(load_i, _int->value, value, 0));
+    return value;
+}
+
+uint64_t ast_float_print_program(ast_float_t *_float) {
+    uint64_t value = iloc_next_id();
+    iloc_program_push(_float->program, iloc_instruction_new(load_i, (uint64_t) _float->value, value, 0));
+    return value;
+}
+
+uint64_t ast_bool_print_program(ast_bool_t *_bool) {
+    uint64_t value = iloc_next_id();
+    iloc_program_push(_bool->program, iloc_instruction_new(load_i, _bool->value == 0 ? 0 : 1, value, 0));
+    return value;
+}
+
+uint64_t ast_identifier_print_program(identifier_t *identifier) {
+    uint64_t location, offset;
+    uint64_t value = iloc_next_id();
+    if (!get_variable(identifier->text, &location, &offset)) {
+        fprintf(stderr, "ERROR: Semantic analysis failed. Variable \"%s\" accessed before being declared.", identifier->text);
+        exit(ERR_UNDECLARED);
+    }
+    iloc_program_push(identifier->program, iloc_instruction_new(load_ai, location, offset, value));
+    return value;
+}
 

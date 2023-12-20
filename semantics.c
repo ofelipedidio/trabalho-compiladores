@@ -2,6 +2,20 @@
 #include "lexeme.h"
 #include <string.h>
 
+uint64_t ast_type_size(ast_type_t type) {
+    switch (type) {
+        case ast_int:
+            return 4;
+        case ast_float:
+            return 8;
+        case ast_bool:
+            return 4;
+        case ast_type_undefined:
+            return 0;
+    }
+}
+
+
 sym_list_t* sym_list_init() {
     // An empty list is represented as a NULL ptr
     return NULL;
@@ -135,6 +149,13 @@ sym_tab_t* sym_tab_push(sym_tab_t *stack) {
     sym_tab_t *new_table = (sym_tab_t*) malloc(sizeof(sym_tab_t));
     new_table->parent = stack;
     new_table->list = sym_list_init();
+    if (stack->parent == NULL) {
+        new_table->scope_size = 0;
+    } else if (stack->parent->parent == NULL) {
+        new_table->scope_size = 0;
+    } else {
+        new_table->scope_size = stack->scope_size;
+    }
 
     return new_table;
 }
@@ -186,8 +207,6 @@ void register_symbol_global_variable(sym_tab_t *top_scope, sym_tab_t *current_sc
     sym_val_t temp_val;
     sym_val_t *temp;
 
-    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
-
     if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
         printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", identifier->text);
         printf("- Contexto: declaracao global na linha %lld, coluna %lld\n", identifier->lexeme.line, identifier->lexeme.column);
@@ -199,26 +218,25 @@ void register_symbol_global_variable(sym_tab_t *top_scope, sym_tab_t *current_sc
         exit(ERR_DECLARED);
     }
 
+    uint64_t type_size = ast_type_size(type);
     temp_val.line = identifier->lexeme.line;
     temp_val.column = identifier->lexeme.column;
     temp_val.nature = nature;
     temp_val.type = type;
     temp_val.lex = lex_clone(identifier->lexeme);
+    temp_val.offset = current_scope->scope_size;
+    temp_val.location = sem_global;
     current_scope->list = sym_list_insert(
             current_scope->list,
             identifier->text,
             temp_val
             ); 
-
-    // sym_tab_print(current_scope);
-    // fprintf(stderr, "\n");
+    current_scope->scope_size += type_size;
 }
 
 void register_symbol_function(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type) {
     sym_val_t temp_val;
     sym_val_t *temp;
-
-    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
 
     if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
         printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", identifier->text);
@@ -236,21 +254,18 @@ void register_symbol_function(sym_tab_t *top_scope, sym_tab_t *current_scope, id
     temp_val.nature = nature;
     temp_val.type = type;
     temp_val.lex = lex_clone(identifier->lexeme);
+    temp_val.offset = current_scope->scope_size;
+    temp_val.location = sem_global;
     current_scope->list = sym_list_insert(
             current_scope->list,
             identifier->text,
             temp_val
             ); 
-
-    // sym_tab_print(current_scope);
-    // fprintf(stderr, "\n");
 }
 
 void register_symbol_parameter(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type, int *delayed_param_error, identifier_t **error_identifier) {
     sym_val_t temp_val;
     sym_val_t *temp;
-
-    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
 
     if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
         *delayed_param_error = 1;
@@ -258,26 +273,25 @@ void register_symbol_parameter(sym_tab_t *top_scope, sym_tab_t *current_scope, i
         return;
     }
 
+    uint64_t type_size = ast_type_size(type);
     temp_val.line = identifier->lexeme.line;
     temp_val.column = identifier->lexeme.column;
     temp_val.nature = nature;
     temp_val.type = type;
     temp_val.lex = lex_clone(identifier->lexeme);
+    temp_val.offset = current_scope->scope_size;
+    temp_val.location = sem_local;
     current_scope->list = sym_list_insert(
             current_scope->list,
             identifier->text,
             temp_val
             ); 
-
-    // sym_tab_print(current_scope);
-    // fprintf(stderr, "\n");
+    current_scope->scope_size += type_size;
 }
 
 void register_symbol_local_variable(sym_tab_t *top_scope, sym_tab_t *current_scope, identifier_t *identifier, sem_nature_t nature, ast_type_t type) {
     sym_val_t temp_val;
     sym_val_t *temp;
-
-    // fprintf(stderr, "got symbol \"%s\"\n", identifier->text);
 
     if ((temp = sym_tab_find(top_scope, identifier->text)) != NULL) {
         printf("Erro semantico: variavel \"%s\" foi declarada multiplas vezes.\n", identifier->text);
@@ -290,17 +304,29 @@ void register_symbol_local_variable(sym_tab_t *top_scope, sym_tab_t *current_sco
         exit(ERR_DECLARED);
     }
 
+    uint64_t type_size = ast_type_size(type);
     temp_val.line = identifier->lexeme.line;
     temp_val.column = identifier->lexeme.column;
     temp_val.nature = nature;
     temp_val.type = type;
     temp_val.lex = lex_clone(identifier->lexeme);
+    temp_val.offset = current_scope->scope_size;
+    temp_val.location = sem_local;
     current_scope->list = sym_list_insert(
             current_scope->list,
             identifier->text,
             temp_val
             ); 
-
-    // sym_tab_print(current_scope);
-    // fprintf(stderr, "\n");
+    current_scope->scope_size += type_size;
 }
+
+int get_variable(sym_tab_t *current_scope, char *name, sem_var_location_t *location, uint64_t *offset) {
+    sym_val_t *value = sym_tab_find(current_scope, name);
+    if (value == NULL) {
+        return 0;
+    }
+    *location = value->location;
+    *offset = value->offset;
+    return 1;
+}
+
