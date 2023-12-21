@@ -9,6 +9,7 @@
 #include "lexeme.h"
 #include "code_gen.h"
 
+
 /* ##############
  * # Structures #
  * ############## */
@@ -376,5 +377,11 @@ uint64_t ast_int_print_program(ast_int_t *_int);
 uint64_t ast_float_print_program(ast_float_t *_float);
 uint64_t ast_bool_print_program(ast_bool_t *_bool);
 uint64_t ast_identifier_print_program(identifier_t *identifier);
+
+typedef struct {
+    ast_type_t type;
+    iloc_program_t code;
+} ast_node_t;
+
 
 #endif // !AST
