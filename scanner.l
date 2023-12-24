@@ -72,12 +72,51 @@ return {process_match(); return TK_PR_RETURN;}
 \&   {process_match(); return TK_OC_AND;}
 \|   {process_match(); return TK_OC_OR;}
 
-{digit}+           {process_match(); yylval.lexeme = yylval.lexeme = make_lexeme_int(get_line_number(), get_col_number(), atoll(yytext)); return TK_LIT_INT;}
-{digit}*\.{digit}+ {process_match(); yylval.lexeme = make_lexeme_float(get_line_number(), get_col_number(), atof(yytext));                return TK_LIT_FLOAT;}
-true               {process_match(); yylval.lexeme = make_lexeme_bool(get_line_number(), get_col_number(), 1);                            return TK_LIT_TRUE;}
-false              {process_match(); yylval.lexeme = make_lexeme_bool(get_line_number(), get_col_number(), 0);                            return TK_LIT_FALSE;}
+{digit}+ {
+    process_match();
+    yylval.lexeme_t.lex_int_t.type = lex_int;
+    yylval.lexeme_t.lex_int_t.value = atoll(yytext);
+    yylval.lexeme_t.lex_int_t.line = get_line_number();
+    yylval.lexeme_t.lex_int_t.column = get_list_column();
 
-({alpha}|_)({alphanum}|_)* {process_match(); yylval.lexeme = make_lexeme_ident(get_line_number(), get_col_number(), strdup(yytext)); return TK_IDENTIFICADOR;}
+    return TK_LIT_INT;
+}
+
+{digit}*\.{digit}+ {
+    process_match();
+    yylval.lexeme_t.lex_float_t.type = lex_float;
+    yylval.lexeme_t.lex_float_t.value = atof(yytext);
+    yylval.lexeme_t.lex_float_t.line = get_line_number();
+    yylval.lexeme_t.lex_float_t.column = get_list_column();
+    return TK_LIT_FLOAT;
+}
+
+true {
+    process_match();
+    yylval.lexeme_t.lex_bool_t.type = lex_bool;
+    yylval.lexeme_t.lex_bool_t.value = 1;
+    yylval.lexeme_t.lex_bool_t.line = get_line_number();
+    yylval.lexeme_t.lex_bool_t.column = get_list_column();
+    return TK_LIT_TRUE;
+}
+
+false {
+    process_match();
+    yylval.lexeme_t.lex_bool_t.type = lex_bool;
+    yylval.lexeme_t.lex_bool_t.value = 0;
+    yylval.lexeme_t.lex_bool_t.line = get_line_number();
+    yylval.lexeme_t.lex_bool_t.column = get_list_column();
+    return TK_LIT_FALSE;
+}
+
+({alpha}|_)({alphanum}|_)* {
+    process_match();
+    yylval.lexeme_t.lex_ident_t.type = lex_ident;
+    yylval.lexeme_t.lex_ident_t.value = strdup(yytext);
+    yylval.lexeme_t.lex_ident_t.line = get_line_number();
+    yylval.lexeme_t.lex_ident_t.column = get_list_column();
+    return TK_IDENTIFICADOR;
+}
 
 . {process_match(); return TK_ERRO;}
 

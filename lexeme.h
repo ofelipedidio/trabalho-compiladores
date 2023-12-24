@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define bool int
 #define true 1
@@ -18,18 +19,11 @@ typedef enum {
     lex_ident,
 } lexeme_type_t;
 
-typedef union {
-    long long int lit_int;
-    double lit_float;
-    bool lit_bool;
-    char *ident;
-} lexeme_value_t;
-
 typedef struct {
-    long long int line;
-    long long int column;
     lexeme_type_t type;
-    lexeme_value_t value;
+    char *text;
+    uint64_t line;
+    uint64_t column;
 } lexeme_t;
 
 /* ################

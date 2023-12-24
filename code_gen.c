@@ -1,4 +1,6 @@
 #include "code_gen.h"
+#include "list.h"
+#include "structs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -194,4 +196,159 @@ void iloc_program_to_string(iloc_program_t *program) {
         iloc_instruction_to_string(&program->instructions[i]);
     }
 }
+
+ast_t *ast_new(ast_label_t label) {
+    ast_t *ast = (ast_t*) malloc(sizeof(ast_t));
+    if (ast == NULL) {
+        fprintf(stderr, "ERROR: Failed to allocate memory for ast_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
+        exit(EXIT_FAILURE);
+    }
+    ast_t** children = (ast_t**) malloc(sizeof(ast_t*));
+    if (children == NULL) {
+        free(ast);
+        fprintf(stderr, "ERROR: Failed to allocate memory for ast_t* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
+        exit(EXIT_FAILURE);
+    }
+    ast->label = label;
+    ast->children = children;
+    ast->lexeme = NULL;
+    ast->type = type_undefined;
+    ast->program = iloc_program_new();
+    return ast;
+}
+
+scope_t *current_scope = NULL;
+
+void reduce_push_scope() {
+    current_scope = scope_new(current_scope);
+}
+
+void reduce_pop_scope() {
+    scope_t temp_scope = current_scope;
+    current_scope = current_scope->parent;
+    scope_free(temp_scope);
+}
+
+ast_t *reduce_program(ast_t *global_list) {
+    return global_list;
+}
+
+ast_t *reduce_global_list_empty() {
+    return ast_new(ast_global_list);
+}
+
+ast_t *reduce_global_list_variable(ast_t *global_list, type_t type, list_t names) {
+    // Iterates over names on the list and takes ownership of the items
+    list_iterate(names, i) {
+        lexeme_t *lexeme = list_get_as(&names, i, lexeme_t);
+        ast_t *node = ast_new(ast_var_decl);
+        node->type = type;
+        node->lexeme = lexeme;
+        ast_push(global_list, node);
+    }
+    // Frees the list, but not the items
+    list_free(names);
+    return global_list;
+}
+
+ast_t *reduce_global_list_function(ast_t *global_list, ast_t *function_header, ast_t *commands) {
+    ast_t *node = ast_new(ast_func_decl);
+    ast_push(node, function_header);
+    ast_push(node, commands);
+    ast_push(global_list, node);
+    return global_list;
+}
+
+ast_t *reduce_function_header(list_t parameters, type_t type, lexeme_t *name) {
+    ast_t *header = ast_new(ast_func_header);
+    header->type = type;
+    header->lexeme = name;
+    list_iterate(parameters, i) {
+        ast_t *argument = list_get_as(&parameters, i, ast_t);
+        ast_push(header, argument);
+    }
+    return header;
+}
+
+ast_t *reduce_variable(type_t type, lexeme_t name) {
+}
+
+ast_t *reduce_command_empty() {
+}
+
+ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t names) {
+}
+
+ast_t *reduce_command_assignment(ast_t *commands, lexeme_t name, ast_t *expr) {
+}
+
+ast_t *reduce_command_call(ast_t *commands, lexeme_t name, list_t arguments) {
+}
+
+ast_t *reduce_command_return(ast_t *commands, ast_t *expr) {
+}
+
+ast_t *reduce_command_if_else(ast_t *commands, ast_t *cond, ast_t *then_block, ast_t *else_block) {
+}
+
+ast_t *reduce_command_if(ast_t *commands, ast_t *cond, ast_t *then_block) {
+}
+
+ast_t *reduce_command_while(ast_t *commands, ast_t *cond, ast_t *block) {
+}
+
+ast_t *reduce_command_block(ast_t *commands, ast_t *block) {
+}
+
+ast_t *reduce_expr_or(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_and(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_eq(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_ne(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_lt(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_gt(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_le(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_ge(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_add(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_sub(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_mul(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_div(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_mod(ast_t *left, ast_t *right) {
+}
+
+ast_t *reduce_expr_inv(ast_t *expr) {
+}
+
+ast_t *reduce_expr_not(ast_t *expr) {
+}
+
+ast_t *reduce_expr_literal(lexeme_t literal) {
+}
+
+ast_t *reduce_expr_call(lexeme_t literal, list_t *arguments) {
+}
+
 
