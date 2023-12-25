@@ -197,24 +197,44 @@ void iloc_program_to_string(iloc_program_t *program) {
     }
 }
 
+#define AST_INITIAL_LENGTH 2
+
 ast_t *ast_new(ast_label_t label) {
     ast_t *ast = (ast_t*) malloc(sizeof(ast_t));
     if (ast == NULL) {
         fprintf(stderr, "ERROR: Failed to allocate memory for ast_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
         exit(EXIT_FAILURE);
     }
-    ast_t** children = (ast_t**) malloc(sizeof(ast_t*));
+    ast_t** children = (ast_t**) malloc(AST_INITIAL_LENGTH*sizeof(ast_t*));
     if (children == NULL) {
         free(ast);
         fprintf(stderr, "ERROR: Failed to allocate memory for ast_t* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
         exit(EXIT_FAILURE);
     }
+    ast->length = 0;
+    ast->capacity = AST_INITIAL_LENGTH;
     ast->label = label;
     ast->children = children;
     ast->lexeme = NULL;
     ast->type = type_undefined;
     ast->program = iloc_program_new();
     return ast;
+}
+
+void ast_push(ast_t *parent, ast_t *child) {
+    while (parent->length+1 >= parent->capacity) {
+        // new_capacity = round_up(3/2 * capacity);
+        uint64_t new_capacity = (parent->capacity * 3 + 1) / 2;
+        ast_t **new_children = realloc(parent->children, new_capacity * sizeof(void*));
+        if (new_children == NULL) {
+            fprintf(stderr, "ERROR: Failed to reallocate memory for void* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
+            exit(EXIT_FAILURE);
+        }
+        parent->children = new_children;
+        parent->capacity = new_capacity;
+    }
+    parent->children[parent->length] = child;
+    parent->length++;
 }
 
 scope_t *current_scope = NULL;
@@ -224,7 +244,7 @@ void reduce_push_scope() {
 }
 
 void reduce_pop_scope() {
-    scope_t temp_scope = current_scope;
+    scope_t *temp_scope = current_scope;
     current_scope = current_scope->parent;
     scope_free(temp_scope);
 }
@@ -237,10 +257,10 @@ ast_t *reduce_global_list_empty() {
     return ast_new(ast_global_list);
 }
 
-ast_t *reduce_global_list_variable(ast_t *global_list, type_t type, list_t names) {
+ast_t *reduce_global_list_variable(ast_t *global_list, type_t type, list_t *names) {
     // Iterates over names on the list and takes ownership of the items
     list_iterate(names, i) {
-        lexeme_t *lexeme = list_get_as(&names, i, lexeme_t);
+        lexeme_t *lexeme = list_get_as(names, i, lexeme_t);
         ast_t *node = ast_new(ast_var_decl);
         node->type = type;
         node->lexeme = lexeme;
@@ -259,96 +279,221 @@ ast_t *reduce_global_list_function(ast_t *global_list, ast_t *function_header, a
     return global_list;
 }
 
-ast_t *reduce_function_header(list_t parameters, type_t type, lexeme_t *name) {
+ast_t *reduce_function_header(list_t *parameters, type_t type, lexeme_t *name) {
     ast_t *header = ast_new(ast_func_header);
     header->type = type;
     header->lexeme = name;
     list_iterate(parameters, i) {
-        ast_t *argument = list_get_as(&parameters, i, ast_t);
+        ast_t *argument = list_get_as(parameters, i, ast_t);
         ast_push(header, argument);
     }
     return header;
 }
 
-ast_t *reduce_variable(type_t type, lexeme_t name) {
+ast_t *reduce_variable(type_t type, lexeme_t *name) {
+    ast_t *variable = ast_new(ast_var_decl);
+    variable->type = type;
+    variable->lexeme = name;
+    return variable;
 }
 
 ast_t *reduce_command_empty() {
+    return ast_new(ast_command_list);
 }
 
-ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t names) {
+ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t *names) {
+    list_iterate(names, i) {
+        ast_t *variable = ast_new(ast_var_decl);
+        variable->type = type;
+        variable->lexeme = list_get_as(names, i, lexeme_t);
+        ast_push(commands, variable);
+    }
+    return commands;
 }
 
-ast_t *reduce_command_assignment(ast_t *commands, lexeme_t name, ast_t *expr) {
+ast_t *reduce_command_assignment(ast_t *commands, lexeme_t *name, ast_t *expr) {
+    ast_t *assignment = ast_new(ast_assignment);
+    assignment->type = expr->type;
+    ast_push(assignment, expr);
+    ast_push(commands, assignment);
+    return commands;
 }
 
-ast_t *reduce_command_call(ast_t *commands, lexeme_t name, list_t arguments) {
+ast_t *reduce_command_call(ast_t *commands, lexeme_t *name, list_t *arguments) {
+    ast_t *call = ast_new(ast_call);
+    // TODO - Didio: get type
+    // call->type = type;
+    call->lexeme = name;
+    list_iterate(arguments, i) {
+        ast_t *node = list_get_as(arguments, i, ast_t);
+        ast_push(call, node);
+    }
+    ast_push(commands, call);
+    return commands;
 }
 
 ast_t *reduce_command_return(ast_t *commands, ast_t *expr) {
+    ast_t *return_ = ast_new(ast_return);
+    return_->type = expr->type;
+    ast_push(return_, expr);
+    ast_push(commands, return_);
+    return commands;
 }
 
 ast_t *reduce_command_if_else(ast_t *commands, ast_t *cond, ast_t *then_block, ast_t *else_block) {
+    ast_t *if_ = ast_new(ast_if);
+    if_->type = cond->type;
+    ast_push(if_, cond);
+    ast_push(if_, then_block);
+    ast_push(if_, else_block);
+    ast_push(commands, if_);
+    return commands;
 }
 
 ast_t *reduce_command_if(ast_t *commands, ast_t *cond, ast_t *then_block) {
+    ast_t *if_ = ast_new(ast_if);
+    if_->type = cond->type;
+    ast_push(if_, cond);
+    ast_push(if_, then_block);
+    ast_push(if_, NULL);
+    ast_push(commands, if_);
+    return commands;
 }
 
 ast_t *reduce_command_while(ast_t *commands, ast_t *cond, ast_t *block) {
+    ast_t *while_ = ast_new(ast_while);
+    while_->type = cond->type;
+    ast_push(while_, cond);
+    ast_push(while_, block);
+    ast_push(commands, while_);
+    return commands;
 }
 
 ast_t *reduce_command_block(ast_t *commands, ast_t *block) {
+    ast_push(commands, block);
+    return commands;
 }
 
 ast_t *reduce_expr_or(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_or);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_and(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_and);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_eq(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_eq);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_ne(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_ne);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_lt(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_lt);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_gt(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_gt);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_le(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_le);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_ge(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_ge);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_add(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_add);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_sub(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_sub);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_mul(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_mul);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_div(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_div);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_mod(ast_t *left, ast_t *right) {
+    ast_t *new_expr = ast_new(ast_expr_mod);
+    ast_push(new_expr, left);
+    ast_push(new_expr, right);
+    return new_expr;
 }
 
 ast_t *reduce_expr_inv(ast_t *expr) {
+    ast_t *new_expr = ast_new(ast_expr_inv);
+    ast_push(new_expr, expr);
+    return new_expr;
 }
 
 ast_t *reduce_expr_not(ast_t *expr) {
+    ast_t *new_expr = ast_new(ast_expr_not);
+    ast_push(new_expr, expr);
+    return new_expr;
 }
 
-ast_t *reduce_expr_literal(lexeme_t literal) {
+ast_t *reduce_expr_literal(lexeme_t *literal) {
+    ast_t *expr = ast_new(ast_val_lit);
+    expr->lexeme = literal;
+    return expr;
 }
 
-ast_t *reduce_expr_call(lexeme_t literal, list_t *arguments) {
+ast_t *reduce_expr_call(lexeme_t *literal, list_t *arguments) {
+    ast_t *call = ast_new(ast_call);
+    // TODO - Didio: get type
+    // call->type = type;
+    call->lexeme = literal;
+    list_iterate(arguments, i) {
+        ast_t *node = list_get_as(arguments, i, ast_t);
+        ast_push(call, node);
+    }
+    ast_push(commands, call);
+    return commands;
 }
 
 

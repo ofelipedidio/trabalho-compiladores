@@ -53,6 +53,9 @@ typedef union {
 /*******************\
 * Semantic Analysis *
 \*******************/
+typedef struct scope {
+    struct scope *parent;
+} scope_t;
 
 /******************************\
 * Intermediate Code Generation *
@@ -137,12 +140,35 @@ typedef enum {
     ast_var_decl,
     ast_func_decl,
     ast_func_header,
-    ast_expr
+    ast_command_list,
+    ast_assignment,
+    ast_call,
+    ast_return,
+    ast_if,
+    ast_while,
+    ast_expr_or,
+    ast_expr_and,
+    ast_expr_eq,
+    ast_expr_ne,
+    ast_expr_lt,
+    ast_expr_gt,
+    ast_expr_le,
+    ast_expr_ge,
+    ast_expr_add,
+    ast_expr_sub,
+    ast_expr_mul,
+    ast_expr_div,
+    ast_expr_mod,
+    ast_expr_inv,
+    ast_expr_not,
+    ast_val_lit,
 } ast_label_t;
 
 typedef struct ast {
     ast_label_t label;
     struct ast **children;
+    uint64_t length;
+    uint64_t capacity;
     lexeme_t *lexeme;
     type_t type;
     iloc_program_t *program;

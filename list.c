@@ -21,7 +21,8 @@ list_t empty_list() {
 void list_push(list_t *list, void *item) {
     // Ensure the item can fit on the list
     while (list->length+1 >= list->capacity) {
-        uint64_t new_capacity = (list->capacity * 3) >> 1;
+        // new_capacity = round_up(3/2 * capacity);
+        uint64_t new_capacity = (list->capacity * 3 + 1) / 2;
         void **new_contents = realloc(list->contents, new_capacity * sizeof(void*));
         if (new_contents == NULL) {
             fprintf(stderr, "ERROR: Failed to reallocate memory for void* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
@@ -34,3 +35,14 @@ void list_push(list_t *list, void *item) {
     list->length++;
 }
 
+void *list_get(list_t *list, uint64_t index) {
+    if (index >= list->length) {
+        return NULL;
+    }
+    return list->contents[index];
+}
+
+void list_free(list_t *list) {
+    free(list->contents);
+    free(list);
+}
