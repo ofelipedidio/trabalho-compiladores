@@ -20,12 +20,12 @@
 #include <stdio.h>
 // #include <stdlib.h>
 // #include <string.h>
+#include "code_gen.h"
 
 int yylex(void);
 void yyerror (char const *mensagem);
 
 extern int get_line_number(void);
-extern int get_col_number(void);
 extern void *arvore;
 
 %}
@@ -34,9 +34,9 @@ extern void *arvore;
 
 %union {
     ast_t *ast_t;
-    list_t list_t;
+    list_t *list_t;
     type_t type_t;
-    lexeme_t lexeme_t;
+    lexeme_t *lexeme_t;
 }
 
 %token TK_PR_INT
@@ -66,7 +66,7 @@ extern void *arvore;
 %type<list_t>         comma_separated_variables_1
 %type<list_t>         comma_separated_expressions_0
 %type<list_t>         comma_separated_expressions_1
-%type<list_t>         comma_separated_identifiers_0
+/* %type<list_t>         comma_separated_identifiers_0 */
 %type<list_t>         comma_separated_identifiers_1
 %type<ast_t>          variable                        
 %type<ast_t>          command_list
@@ -90,7 +90,7 @@ pop_scope: %empty
 
 /* Program */
 program: push_scope global_list pop_scope 
-    { $$ = reduce_program($2); };
+    { $$ = reduce_program($2); arvore = $$; };
 
 /* Empty program */
 global_list: %empty 
@@ -102,9 +102,9 @@ global_list: global_list type comma_separated_identifiers_1 ';'
 
 /* Global function */
 global_list: global_list push_scope function_header '{' command_list '}' pop_scope 
-    { reduce_global_list_function($1, $3, $5); };
+    { $$ = reduce_global_list_function($1, $3, $5); };
 function_header: '(' comma_separated_variables_0 ')' TK_OC_GE type '!' TK_IDENTIFICADOR 
-    { reduce_function_header($2, $5, $7); };
+    { $$ = reduce_function_header($2, $5, $7); };
 
 /* Comma-separated variables */
 comma_separated_variables_0: %empty 
@@ -127,11 +127,11 @@ comma_separated_expressions_1: comma_separated_expressions_1 ',' expression
     { $$ = $1; list_push($$, $3); };
 
 /* Comma-separated identifiers */
-comma_separated_identifiers_0: %empty 
-    { $$ = empty_list(); };
-comma_separated_identifiers_0: comma_separated_identifiers_1 
-    { $$ = $1; };
-comma_separated_identifiers_1: TK_IDENTIFICADOR 
+/* comma_separated_identifiers_0: %empty                                     */
+/*     { $$ = empty_list(); };                                               */
+/* comma_separated_identifiers_0: comma_separated_identifiers_1              */
+/*     { $$ = $1; };                                                         */
+comma_separated_identifiers_1: TK_IDENTIFICADOR
     { $$ = empty_list(); list_push($$, $1); };
 comma_separated_identifiers_1: comma_separated_identifiers_1 ',' TK_IDENTIFICADOR 
     { $$ = $1; list_push($$, $3); };
@@ -212,13 +212,13 @@ expr_1: '!' expr_1
 expr_v: '(' expression ')' 
     { $$ = $2; };
 expr_v: TK_LIT_INT 
-    { $$ = reduce_expr_literal($1); };
+    { $$ = reduce_expr_int($1); };
 expr_v: TK_LIT_FLOAT 
-    { $$ = reduce_expr_literal($1); };
+    { $$ = reduce_expr_float($1); };
 expr_v: TK_LIT_TRUE 
-    { $$ = reduce_expr_literal($1); };
+    { $$ = reduce_expr_bool($1); };
 expr_v: TK_LIT_FALSE 
-    { $$ = reduce_expr_literal($1); };
+    { $$ = reduce_expr_bool($1); };
 expr_v: TK_IDENTIFICADOR 
     { $$ = reduce_expr_ident($1); };
 expr_v: TK_IDENTIFICADOR '(' comma_separated_expressions_0 ')' 

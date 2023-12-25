@@ -11,9 +11,10 @@
 %option noinput nounput noyywrap nodefault
 
 %{
-#include<stdio.h>
-#include<stdlib.h>
-#include"parser.tab.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "parser.tab.h"
+#include "code_gen.h"
 
 int line = 1;
 int col = 1;
@@ -74,47 +75,42 @@ return {process_match(); return TK_PR_RETURN;}
 
 {digit}+ {
     process_match();
-    yylval.lexeme_t.lex_int_t.type = lex_int;
-    yylval.lexeme_t.lex_int_t.value = atoll(yytext);
-    yylval.lexeme_t.lex_int_t.line = get_line_number();
-    yylval.lexeme_t.lex_int_t.column = get_list_column();
+    lexeme_t *lexeme = lexeme_new(lex_int, get_line_number(), get_col_number());
+    lexeme->lex_int_t.value = atoll(yytext);
+    yylval.lexeme_t = lexeme;
 
     return TK_LIT_INT;
 }
 
 {digit}*\.{digit}+ {
     process_match();
-    yylval.lexeme_t.lex_float_t.type = lex_float;
-    yylval.lexeme_t.lex_float_t.value = atof(yytext);
-    yylval.lexeme_t.lex_float_t.line = get_line_number();
-    yylval.lexeme_t.lex_float_t.column = get_list_column();
+    lexeme_t *lexeme = lexeme_new(lex_float, get_line_number(), get_col_number());
+    lexeme->lex_float_t.value = atof(yytext);
+    yylval.lexeme_t = lexeme;
     return TK_LIT_FLOAT;
 }
 
 true {
     process_match();
-    yylval.lexeme_t.lex_bool_t.type = lex_bool;
-    yylval.lexeme_t.lex_bool_t.value = 1;
-    yylval.lexeme_t.lex_bool_t.line = get_line_number();
-    yylval.lexeme_t.lex_bool_t.column = get_list_column();
+    lexeme_t *lexeme = lexeme_new(lex_bool, get_line_number(), get_col_number());
+    lexeme->lex_bool_t.value = 1;
+    yylval.lexeme_t = lexeme;
     return TK_LIT_TRUE;
 }
 
 false {
     process_match();
-    yylval.lexeme_t.lex_bool_t.type = lex_bool;
-    yylval.lexeme_t.lex_bool_t.value = 0;
-    yylval.lexeme_t.lex_bool_t.line = get_line_number();
-    yylval.lexeme_t.lex_bool_t.column = get_list_column();
+    lexeme_t *lexeme = lexeme_new(lex_bool, get_line_number(), get_col_number());
+    lexeme->lex_bool_t.value = 0;
+    yylval.lexeme_t = lexeme;
     return TK_LIT_FALSE;
 }
 
 ({alpha}|_)({alphanum}|_)* {
     process_match();
-    yylval.lexeme_t.lex_ident_t.type = lex_ident;
-    yylval.lexeme_t.lex_ident_t.value = strdup(yytext);
-    yylval.lexeme_t.lex_ident_t.line = get_line_number();
-    yylval.lexeme_t.lex_ident_t.column = get_list_column();
+    lexeme_t *lexeme = lexeme_new(lex_ident, get_line_number(), get_col_number());
+    lexeme->lex_ident_t.value = strdup(yytext);
+    yylval.lexeme_t = lexeme;
     return TK_IDENTIFICADOR;
 }
 

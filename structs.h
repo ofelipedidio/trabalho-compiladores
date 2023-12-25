@@ -26,35 +26,52 @@ typedef enum {
 typedef union {
     struct {
         lexeme_type_t type;
-        char *value;
         uint64_t line;
         uint64_t column;
+        char *value;
     } lex_ident_t;
     struct {
         lexeme_type_t type;
-        uint64_t value;
         uint64_t line;
         uint64_t column;
+        uint64_t value;
     } lex_int_t;
     struct {
         lexeme_type_t type;
-        double value;
         uint64_t line;
         uint64_t column;
+        double value;
     } lex_float_t;
     struct {
         lexeme_type_t type;
-        int value;
         uint64_t line;
         uint64_t column;
+        int value;
     } lex_bool_t;
 } lexeme_t;
 
 /*******************\
 * Semantic Analysis *
 \*******************/
+typedef enum {
+    nat_literal,
+    nat_identifier,
+    nat_function,
+} nature_t;
+
+typedef struct {
+    nature_t nature;
+    type_t type;
+    lexeme_t *lexeme;
+    uint64_t line;
+    uint64_t column;
+    uint64_t offset;
+} name_entry_t;
+
 typedef struct scope {
     struct scope *parent;
+    list_t *entries;
+    uint64_t size;
 } scope_t;
 
 /******************************\
@@ -161,7 +178,10 @@ typedef enum {
     ast_expr_mod,
     ast_expr_inv,
     ast_expr_not,
-    ast_val_lit,
+    ast_ident,
+    ast_val_int,
+    ast_val_float,
+    ast_val_bool,
 } ast_label_t;
 
 typedef struct ast {

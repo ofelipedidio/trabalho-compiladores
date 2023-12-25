@@ -5,16 +5,21 @@
 
 #define LIST_INITIAL_CAPACITY 10
 
-list_t empty_list() {
-    list_t list;
+list_t *empty_list() {
+    list_t *list = (list_t*) malloc(sizeof(list_t));
+    if (list == NULL) {
+        fprintf(stderr, "ERROR: Failed to allocate memory for list_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
+        exit(EXIT_FAILURE);
+    }
     void** contents = (void**) malloc(LIST_INITIAL_CAPACITY*sizeof(void*));
     if (contents == NULL) {
+        free(list);
         fprintf(stderr, "Failed to allocate memory for void* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-3);
         exit(1);
     }
-    list.contents = contents;
-    list.capacity = LIST_INITIAL_CAPACITY;
-    list.length = 0;
+    list->contents = contents;
+    list->capacity = LIST_INITIAL_CAPACITY;
+    list->length = 0;
     return list;
 }
 

@@ -5,29 +5,60 @@
 #include "list.h"
 #include "structs.h"
 
-iloc_program_t *iloc_program_new();
+#define ERR_UNDECLARED 10 //2.2
+#define ERR_DECLARED   11 //2.2
+#define ERR_VARIABLE   20 //2.3
+#define ERR_FUNCTION   21 //2.3
 
-iloc_instruction_t iloc_instruction_new(iloc_instruction_type_t type, uint64_t r1, uint64_t r2, uint64_t r3);
-
-void iloc_program_push(iloc_program_t *program, iloc_instruction_t instruction);
-
-void iloc_program_append(iloc_program_t *dest, iloc_program_t *src);
-
-void iloc_program_free(iloc_program_t *program);
-
+/******************************\
+* Intermediate Code Generation *
+\******************************/
+/*
+ * This function generates an unused id
+ */
 uint64_t iloc_next_id();
 
+/*
+ * This function creates a new program structure
+ */
+iloc_program_t *iloc_program_new();
+
+/*
+ * This function creates a new program instruction
+ */
+iloc_instruction_t iloc_instruction_new(iloc_instruction_type_t type, uint64_t r1, uint64_t r2, uint64_t r3);
+
+/*
+ * This function inserts the instruction into the end of the program
+ */
+void iloc_program_push(iloc_program_t *program, iloc_instruction_t instruction);
+
+/*
+ * This function inserts all the instructions from <src> into the end of <dest>
+ */
+void iloc_program_append(iloc_program_t *dest, iloc_program_t *src);
+
+/*
+ * This function frees a program
+ */
+void iloc_program_free(iloc_program_t *program);
+
+/*
+ * This function writes a instruction to stdout
+ */
 void iloc_instruction_to_string(iloc_instruction_t *instruction);
 
+/*
+ * This function writes every instruction of the program to stdout
+ */
 void iloc_program_to_string(iloc_program_t *program);
 
+/********************\
+* Syntactic Analysis *
+\********************/
 ast_t *ast_new(ast_label_t label);
 
 void ast_push(ast_t *parent, ast_t *child);
-
-scope_t *scope_new(scope_t *parent);
-
-void scope_free(scope_t *scope);
 
 /********************\
 * Reduction Handlers *
@@ -64,6 +95,34 @@ ast_t *reduce_expr_div(ast_t *left, ast_t *right);
 ast_t *reduce_expr_mod(ast_t *left, ast_t *right);
 ast_t *reduce_expr_inv(ast_t *expr);
 ast_t *reduce_expr_not(ast_t *expr);
-ast_t *reduce_expr_literal(lexeme_t *literal);
+ast_t *reduce_expr_ident(lexeme_t *literal);
+ast_t *reduce_expr_int(lexeme_t *literal);
+ast_t *reduce_expr_float(lexeme_t *literal);
+ast_t *reduce_expr_bool(lexeme_t *literal);
 ast_t *reduce_expr_call(lexeme_t *literal, list_t *arguments);
 
+/********\
+* Lexeme *
+\********/
+lexeme_t *lexeme_new(lexeme_type_t type, uint64_t line, uint64_t column);
+
+lexeme_t *lexeme_clone(lexeme_t *lexeme);
+
+/*******************\
+* Semantic Analysis *
+\*******************/
+type_t type_infer(type_t left, type_t right);
+
+scope_t *scope_new(scope_t *parent);
+
+void name_entry_free(name_entry_t *entry);
+
+void scope_free(scope_t *scope);
+
+int register_variable(scope_t *scope, type_t type, lexeme_t *lexeme);
+
+int register_function(scope_t *scope, type_t type, lexeme_t *lexeme);
+
+uint64_t sizeof_type(type_t type);
+
+name_entry_t *scope_find(scope_t *scope, char *name);

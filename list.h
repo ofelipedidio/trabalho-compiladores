@@ -8,7 +8,7 @@ typedef struct {
     uint64_t capacity;
 } list_t;
 
-list_t empty_list();
+list_t *empty_list();
 
 void list_push(list_t *list, void *item);
 
