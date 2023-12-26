@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "list.h"
 #include "structs.h"
+#include "print.h"
 
 #define ERR_UNDECLARED 10 //2.2
 #define ERR_DECLARED   11 //2.2
@@ -59,12 +60,6 @@ void iloc_program_to_string(iloc_program_t *program);
 ast_t *ast_new(ast_label_t label);
 
 void ast_push(ast_t *parent, ast_t *child);
-
-void print_ast_label(ast_label_t label);
-
-void print_type(type_t type);
-
-void print_lexeme(lexeme_t *lexeme);
 
 /********************\
 * Reduction Handlers *

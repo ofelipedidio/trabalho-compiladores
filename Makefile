@@ -10,8 +10,8 @@ ETAPA=etapa5
 CC=gcc
 #CFLAGS=-fsanitize=address,leak -g
 CFLAGS=
-DEPS=parser.tab.h code_gen.h list.h
-OBJ=lex.yy.o parser.tab.o main.o code_gen.o list.o
+DEPS=parser.tab.h code_gen.h list.h print.h
+OBJ=lex.yy.o parser.tab.o main.o code_gen.o list.o print.o
 
 all: clean $(ETAPA)
 
