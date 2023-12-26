@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "structs.h"
 
+uint32_t lines[1024];
+
 void print_type(FILE *file, type_t type) {
     switch (type) {
         case type_undefined:
@@ -151,5 +153,46 @@ void print_scope(FILE *file, scope_t *scope) {
         print_type(file, entry->type);
         fprintf(file, "] [offset = %ld, line = %ld, column = %ld]\n", entry->offset, entry->line, entry->column);
     }
+}
+
+void print_ast_node(FILE *file, ast_t *ast) {
+    print_ast_label(file, ast->label);
+    if (ast->type != type_undefined) {
+        fprintf(file, " [type=");
+        print_type(file, ast->type);
+        fprintf(file, "]");
+    }
+    if (ast->lexeme != NULL) {
+        fprintf(file, " [value=");
+        print_lexeme(file, ast->lexeme);
+        fprintf(file, "]");
+    }
+    fprintf(file, "\n");
+}
+
+void print_ast_inner(FILE *file, ast_t *ast, int left) {
+    for (uint64_t i = 0; i < ast->length; i++) {
+        for (int i = 0; i < left; i++) {
+            if (lines[i] != 0) {
+                fprintf(file, "│ ");
+            } else {
+                fprintf(file, "  ");
+            }
+        }
+        if (i + 1 == ast->length) {
+            fprintf(file, "└─");
+            lines[left] = 0;
+        } else {
+            fprintf(file, "├─");
+            lines[left] = 1;
+        }
+        print_ast_node(file, ast->children[i]);
+        print_ast_inner(file, ast->children[i], left+1);
+    }
+}
+
+void print_ast(FILE *file, ast_t *ast) {
+    print_ast_node(file, ast);
+    print_ast_inner(file, ast, 0);
 }
 

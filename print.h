@@ -11,3 +11,8 @@ void print_nature(FILE *file, nature_t nature);
 
 void print_scope(FILE *file, scope_t *scope);
 
+void print_ast(FILE *file, ast_t *ast);
+
+void print_ast_node(FILE *file, ast_t *ast);
+
+
