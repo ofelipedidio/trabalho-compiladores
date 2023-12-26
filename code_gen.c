@@ -1,16 +1,17 @@
-#include "code_gen.h"
-#include "list.h"
-#include "structs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include "code_gen.h"
+#include "list.h"
+#include "structs.h"
 
 /**************\
 * Global state *
 \**************/
 uint64_t last_id = 0;
 scope_t *current_scope = NULL;
+scope_t *global_scope = NULL;
 
 /******************************\
 * Intermediate Code Generation *
@@ -204,7 +205,136 @@ void iloc_program_to_string(iloc_program_t *program) {
     }
 }
 
-#define AST_INITIAL_LENGTH 2
+/********************\
+* Syntactic Analysis *
+\********************/
+void print_ast_label(ast_label_t label) {
+    switch (label) {
+        case ast_global_list:
+            fprintf(stderr, "ast_global_list");
+            break;
+        case ast_var_decl:
+            fprintf(stderr, "ast_var_decl");
+            break;
+        case ast_func_decl:
+            fprintf(stderr, "ast_func_decl");
+            break;
+        case ast_func_header:
+            fprintf(stderr, "ast_func_header");
+            break;
+        case ast_command_list:
+            fprintf(stderr, "ast_command_list");
+            break;
+        case ast_assignment:
+            fprintf(stderr, "ast_assignment");
+            break;
+        case ast_call:
+            fprintf(stderr, "ast_call");
+            break;
+        case ast_return:
+            fprintf(stderr, "ast_return");
+            break;
+        case ast_if:
+            fprintf(stderr, "ast_if");
+            break;
+        case ast_while:
+            fprintf(stderr, "ast_while");
+            break;
+        case ast_expr_or:
+            fprintf(stderr, "ast_expr_or");
+            break;
+        case ast_expr_and:
+            fprintf(stderr, "ast_expr_and");
+            break;
+        case ast_expr_eq:
+            fprintf(stderr, "ast_expr_eq");
+            break;
+        case ast_expr_ne:
+            fprintf(stderr, "ast_expr_ne");
+            break;
+        case ast_expr_lt:
+            fprintf(stderr, "ast_expr_lt");
+            break;
+        case ast_expr_gt:
+            fprintf(stderr, "ast_expr_gt");
+            break;
+        case ast_expr_le:
+            fprintf(stderr, "ast_expr_le");
+            break;
+        case ast_expr_ge:
+            fprintf(stderr, "ast_expr_ge");
+            break;
+        case ast_expr_add:
+            fprintf(stderr, "ast_expr_add");
+            break;
+        case ast_expr_sub:
+            fprintf(stderr, "ast_expr_sub");
+            break;
+        case ast_expr_mul:
+            fprintf(stderr, "ast_expr_mul");
+            break;
+        case ast_expr_div:
+            fprintf(stderr, "ast_expr_div");
+            break;
+        case ast_expr_mod:
+            fprintf(stderr, "ast_expr_mod");
+            break;
+        case ast_expr_inv:
+            fprintf(stderr, "ast_expr_inv");
+            break;
+        case ast_expr_not:
+            fprintf(stderr, "ast_expr_not");
+            break;
+        case ast_ident:
+            fprintf(stderr, "ast_val_lit");
+            break;
+        case ast_val_int:
+            fprintf(stderr, "ast_val_int");
+            break;
+        case ast_val_float:
+            fprintf(stderr, "ast_val_float");
+            break;
+        case ast_val_bool:
+            fprintf(stderr, "ast_val_bool");
+            break;
+    }
+}
+
+void print_type(type_t type) {
+    switch (type) {
+        case type_undefined:
+            fprintf(stderr, "undefined");
+            break;
+        case type_int:
+            fprintf(stderr, "int");
+            break;
+        case type_float:
+            fprintf(stderr, "float");
+            break;
+        case type_bool:
+            fprintf(stderr, "bool");
+            break;
+    }
+}
+
+void print_lexeme(lexeme_t *lexeme) {
+        switch (lexeme->lex_ident_t.type) {
+            case lex_ident:
+                fprintf(stderr, "\"%s\"", lexeme->lex_ident_t.value);
+                break;
+            case lex_int:
+                fprintf(stderr, "%ld", lexeme->lex_int_t.value);
+                break;
+            case lex_float:
+                fprintf(stderr, "%f", lexeme->lex_float_t.value);
+                break;
+            case lex_bool:
+                fprintf(stderr, "%s", lexeme->lex_bool_t.value == 0 ? "false" : "true");
+                break;
+        }
+}
+
+#define AST_INITIAL_LENGTH 3
 
 ast_t *ast_new(ast_label_t label) {
     ast_t *ast = (ast_t*) malloc(sizeof(ast_t));
@@ -229,12 +359,15 @@ ast_t *ast_new(ast_label_t label) {
 }
 
 void ast_push(ast_t *parent, ast_t *child) {
-    while (parent->length+1 >= parent->capacity) {
+    uint64_t new_capacity = parent->capacity;
+    while (parent->length+1 >= new_capacity) {
         // new_capacity = round_up(3/2 * capacity);
-        uint64_t new_capacity = (parent->capacity * 3 + 1) / 2;
+        new_capacity = (new_capacity * 3 + 1) / 2;
+    }
+    if (new_capacity > parent->capacity) {
         ast_t **new_children = realloc(parent->children, new_capacity * sizeof(void*));
         if (new_children == NULL) {
-            fprintf(stderr, "ERROR: Failed to reallocate memory for void* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
+            fprintf(stderr, "ERROR: Failed to reallocate memory for ast_t* (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
             exit(EXIT_FAILURE);
         }
         parent->children = new_children;
@@ -249,12 +382,18 @@ void ast_push(ast_t *parent, ast_t *child) {
 \********************/
 void reduce_push_scope() {
     current_scope = scope_new(current_scope);
+    if (current_scope->parent == NULL) {
+        global_scope = current_scope;
+    }
 }
 
 void reduce_pop_scope() {
     scope_t *temp_scope = current_scope;
     current_scope = current_scope->parent;
     scope_free(temp_scope);
+    if (current_scope == NULL) {
+        global_scope = NULL;
+    }
 }
 
 ast_t *reduce_program(ast_t *global_list) {
@@ -269,11 +408,6 @@ ast_t *reduce_global_list_variable(ast_t *global_list, type_t type, list_t *name
     // Iterates over names on the list and takes ownership of the items
     list_iterate(names, i) {
         lexeme_t *lexeme = list_get_as(names, i, lexeme_t);
-        ast_t *node = ast_new(ast_var_decl);
-        node->type = type;
-        node->lexeme = lexeme;
-        ast_push(global_list, node);
-
         int var_res = register_variable(current_scope, type, lexeme);
         if (var_res != 0) {
             printf("- Contexto: na declaracao de variavel global\n");
@@ -285,11 +419,19 @@ ast_t *reduce_global_list_variable(ast_t *global_list, type_t type, list_t *name
             }
             exit(ERR_DECLARED);
         }
+        
+        ast_t *node = ast_new(ast_var_decl);
+        node->type = type;
+        node->lexeme = lexeme;
+        ast_push(global_list, node);
     }
     // Frees the list, but not the items
     list_free(names);
     return global_list;
 }
+
+extern void print_ast(ast_t *ast);
+extern void recr_print(ast_t *ast, int left);
 
 ast_t *reduce_global_list_function(ast_t *global_list, ast_t *function_header, ast_t *commands) {
     ast_t *node = ast_new(ast_func_decl);
@@ -312,7 +454,7 @@ ast_t *reduce_function_header(list_t *parameters, type_t type, lexeme_t *name) {
         }
         exit(ERR_DECLARED);
     }
-
+    
     ast_t *header = ast_new(ast_func_header);
     header->type = type;
     header->lexeme = name;
@@ -348,9 +490,22 @@ ast_t *reduce_command_empty() {
 
 ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t *names) {
     list_iterate(names, i) {
+        lexeme_t *lexeme = list_get_as(names, i, lexeme_t);
+        int var_res = register_variable(current_scope, type, lexeme);
+        if (var_res != 0) {
+            printf("- Contexto: dentro da funcao \"%s\"\n", 
+                    list_get_as(global_scope->entries, global_scope->entries->length-1, lexeme_t)->lex_ident_t.value);
+            printf("- Contexto: na linha %ld, coluna %ld\n", lexeme->lex_ident_t.line, lexeme->lex_ident_t.column);
+            if (var_res == 1) {
+                printf("- Contexto: previamente declarado como variavel\n");
+            } else if (var_res == 2) {
+                printf("- Contexto: previamente declarado como funcao\n");
+            }
+            exit(ERR_DECLARED);
+        }
         ast_t *variable = ast_new(ast_var_decl);
         variable->type = type;
-        variable->lexeme = list_get_as(names, i, lexeme_t);
+        variable->lexeme = lexeme;
         ast_push(commands, variable);
     }
     list_free(names);
@@ -358,6 +513,15 @@ ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t *names) {
 }
 
 ast_t *reduce_command_assignment(ast_t *commands, lexeme_t *name, ast_t *expr) {
+    name_entry_t *entry = scope_find(current_scope, name->lex_ident_t.value);
+    if (entry == NULL) {
+        // TODO - Didio: write message
+        exit(ERR_UNDECLARED);
+    }
+    if (entry->nature != nat_identifier) {
+        // TODO - Didio: write message
+        exit(ERR_FUNCTION);
+    }
     ast_t *assignment = ast_new(ast_assignment);
     assignment->type = expr->type;
     ast_push(assignment, expr);
@@ -367,8 +531,16 @@ ast_t *reduce_command_assignment(ast_t *commands, lexeme_t *name, ast_t *expr) {
 
 ast_t *reduce_command_call(ast_t *commands, lexeme_t *name, list_t *arguments) {
     ast_t *call = ast_new(ast_call);
-    // TODO - Didio: get type
-    // call->type = type;
+    name_entry_t *entry = scope_find(current_scope, name->lex_ident_t.value);
+    if (entry == NULL) {
+        // TODO - Didio: write message
+        exit(ERR_UNDECLARED);
+    }
+    if (entry->nature != nat_function) {
+        // TODO - Didio: write message
+        exit(ERR_VARIABLE);
+    }
+    call->type = entry->type;
     call->lexeme = name;
     list_iterate(arguments, i) {
         ast_t *node = list_get_as(arguments, i, ast_t);
@@ -541,6 +713,16 @@ ast_t *reduce_expr_not(ast_t *expr) {
 
 ast_t *reduce_expr_ident(lexeme_t *literal) {
     ast_t *expr = ast_new(ast_ident);
+    name_entry_t *entry = scope_find(current_scope, literal->lex_ident_t.value);
+    if (entry == NULL) {
+        // TODO - Didio: write message
+        exit(ERR_UNDECLARED);
+    }
+    if (entry->nature != nat_identifier) {
+        // TODO - Didio: write message
+        exit(ERR_FUNCTION);
+    }
+    expr->type = entry->type;
     expr->lexeme = literal;
     return expr;
 }
@@ -568,8 +750,16 @@ ast_t *reduce_expr_bool(lexeme_t *literal) {
 
 ast_t *reduce_expr_call(lexeme_t *literal, list_t *arguments) {
     ast_t *call = ast_new(ast_call);
-    // TODO - Didio: get type
-    // call->type = type;
+    name_entry_t *entry = scope_find(current_scope, literal->lex_ident_t.value);
+    if (entry == NULL) {
+        // TODO - Didio: write message
+        exit(ERR_UNDECLARED);
+    }
+    if (entry->nature != nat_function) {
+        // TODO - Didio: write message
+        exit(ERR_VARIABLE);
+    }
+    call->type = entry->type;
     call->lexeme = literal;
     list_iterate(arguments, i) {
         ast_t *node = list_get_as(arguments, i, ast_t);
@@ -596,7 +786,7 @@ lexeme_t *lexeme_new(lexeme_type_t type, uint64_t line, uint64_t column) {
 
 lexeme_t *lexeme_clone(lexeme_t *lexeme) {
     lexeme_t *new_lexeme = (lexeme_t*) malloc(sizeof(lexeme_t));
-    if (lexeme == NULL) {
+    if (new_lexeme == NULL) {
         fprintf(stderr, "ERROR: Failed to allocate memory for lexeme_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
         exit(EXIT_FAILURE);
     }
@@ -626,7 +816,7 @@ lexeme_t *lexeme_clone(lexeme_t *lexeme) {
             new_lexeme->lex_bool_t.value = lexeme->lex_bool_t.value;
             break;
     }
-    return lexeme;
+    return new_lexeme;
 }
 
 /*******************\
@@ -679,7 +869,7 @@ int register_variable(scope_t *scope, type_t type, lexeme_t *lexeme) {
         }
         return -1;
     }
-
+    
     name_entry_t *name_entry = (name_entry_t*) malloc(sizeof(name_entry_t));
     if (name_entry == NULL) {
         fprintf(stderr, "ERROR: Failed to allocate memory for name_entry_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
@@ -707,13 +897,12 @@ int register_function(scope_t *scope, type_t type, lexeme_t *lexeme) {
         }
         return -1;
     }
-
     name_entry_t *name_entry = (name_entry_t*) malloc(sizeof(name_entry_t));
     if (name_entry == NULL) {
         fprintf(stderr, "ERROR: Failed to allocate memory for name_entry_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
         exit(EXIT_FAILURE);
     }
-    name_entry->nature = nat_identifier;
+    name_entry->nature = nat_function;
     name_entry->type = type;
     name_entry->lexeme = lexeme_clone(lexeme);
     name_entry->line = lexeme->lex_ident_t.line;
@@ -750,7 +939,6 @@ name_entry_t *scope_find(scope_t *scope, char *name) {
         }
         scope = scope->parent;
     }
-
     return NULL;
 }
 

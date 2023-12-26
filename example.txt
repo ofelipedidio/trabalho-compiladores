@@ -1,7 +1,7 @@
-(int a, float b) >= float ! x { }
+(int a, float b) >= float ! e { }
 
 int y, z;
 
-(int a, float b) >= float ! main {
+(int c, float d) >= float ! f {
     return 1;
 }

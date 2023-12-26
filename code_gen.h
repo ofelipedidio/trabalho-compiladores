@@ -60,6 +60,12 @@ ast_t *ast_new(ast_label_t label);
 
 void ast_push(ast_t *parent, ast_t *child);
 
+void print_ast_label(ast_label_t label);
+
+void print_type(type_t type);
+
+void print_lexeme(lexeme_t *lexeme);
+
 /********************\
 * Reduction Handlers *
 \********************/
@@ -126,3 +132,4 @@ int register_function(scope_t *scope, type_t type, lexeme_t *lexeme);
 uint64_t sizeof_type(type_t type);
 
 name_entry_t *scope_find(scope_t *scope, char *name);
+
