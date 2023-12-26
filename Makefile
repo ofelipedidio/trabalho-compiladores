@@ -15,6 +15,8 @@ OBJ=lex.yy.o parser.tab.o main.o code_gen.o list.o print.o
 
 all: clean $(ETAPA)
 
+%.c: %.h $(DEPS)
+
 scanner.l:
 
 parser.y:
