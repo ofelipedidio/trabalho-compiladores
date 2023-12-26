@@ -410,12 +410,12 @@ ast_t *reduce_global_list_variable(ast_t *global_list, type_t type, list_t *name
         lexeme_t *lexeme = list_get_as(names, i, lexeme_t);
         int var_res = register_variable(current_scope, type, lexeme);
         if (var_res != 0) {
-            printf("- Contexto: na declaracao de variavel global\n");
-            printf("- Contexto: na linha %ld, coluna %ld\n", lexeme->lex_ident_t.line, lexeme->lex_ident_t.column);
+            fprintf(stderr, "- Contexto: na declaracao de variavel global\n");
+            fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", lexeme->lex_ident_t.line, lexeme->lex_ident_t.column);
             if (var_res == 1) {
-                printf("- Contexto: previamente declarado como variavel\n");
+                fprintf(stderr, "- Contexto: previamente declarado como variavel\n");
             } else if (var_res == 2) {
-                printf("- Contexto: previamente declarado como funcao\n");
+                fprintf(stderr, "- Contexto: previamente declarado como funcao\n");
             }
             exit(ERR_DECLARED);
         }
@@ -445,12 +445,12 @@ ast_t *reduce_global_list_function(ast_t *global_list, ast_t *function_header, a
 ast_t *reduce_function_header(list_t *parameters, type_t type, lexeme_t *name) {
     int var_res = register_function(current_scope->parent, type, name);
     if (var_res != 0) {
-        printf("- Contexto: na declaracao de funcao\n");
-        printf("- Contexto: na linha %ld, coluna %ld\n", name->lex_ident_t.line, name->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: na declaracao de funcao\n");
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", name->lex_ident_t.line, name->lex_ident_t.column);
         if (var_res == 1) {
-            printf("- Contexto: previamente declarado como variavel\n");
+            fprintf(stderr, "- Contexto: previamente declarado como variavel\n");
         } else if (var_res == 2) {
-            printf("- Contexto: previamente declarado como funcao\n");
+            fprintf(stderr, "- Contexto: previamente declarado como funcao\n");
         }
         exit(ERR_DECLARED);
     }
@@ -462,12 +462,12 @@ ast_t *reduce_function_header(list_t *parameters, type_t type, lexeme_t *name) {
         ast_t *argument = list_get_as(parameters, i, ast_t);
         int var_res = register_variable(current_scope, argument->type, argument->lexeme);
         if (var_res != 0) {
-            printf("- Contexto: na declaracao de parametro da funcao \"%s\"\n", name->lex_ident_t.value);
-            printf("- Contexto: na linha %ld, coluna %ld\n", argument->lexeme->lex_ident_t.line, argument->lexeme->lex_ident_t.column);
+            fprintf(stderr, "- Contexto: na declaracao de parametro da funcao \"%s\"\n", name->lex_ident_t.value);
+            fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", argument->lexeme->lex_ident_t.line, argument->lexeme->lex_ident_t.column);
             if (var_res == 1) {
-                printf("- Contexto: previamente declarado como variavel\n");
+                fprintf(stderr, "- Contexto: previamente declarado como variavel\n");
             } else if (var_res == 2) {
-                printf("- Contexto: previamente declarado como funcao\n");
+                fprintf(stderr, "- Contexto: previamente declarado como funcao\n");
             }
             exit(ERR_DECLARED);
         }
@@ -493,13 +493,13 @@ ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t *names) {
         lexeme_t *lexeme = list_get_as(names, i, lexeme_t);
         int var_res = register_variable(current_scope, type, lexeme);
         if (var_res != 0) {
-            printf("- Contexto: dentro da funcao \"%s\"\n", 
-                    list_get_as(global_scope->entries, global_scope->entries->length-1, lexeme_t)->lex_ident_t.value);
-            printf("- Contexto: na linha %ld, coluna %ld\n", lexeme->lex_ident_t.line, lexeme->lex_ident_t.column);
+            fprintf(stderr, "- Contexto: dentro da funcao \"%s\"\n", 
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
+            fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", lexeme->lex_ident_t.line, lexeme->lex_ident_t.column);
             if (var_res == 1) {
-                printf("- Contexto: previamente declarado como variavel\n");
+                fprintf(stderr, "- Contexto: previamente declarado como variavel\n");
             } else if (var_res == 2) {
-                printf("- Contexto: previamente declarado como funcao\n");
+                fprintf(stderr, "- Contexto: previamente declarado como funcao\n");
             }
             exit(ERR_DECLARED);
         }
@@ -515,11 +515,17 @@ ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t *names) {
 ast_t *reduce_command_assignment(ast_t *commands, lexeme_t *name, ast_t *expr) {
     name_entry_t *entry = scope_find(current_scope, name->lex_ident_t.value);
     if (entry == NULL) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a variavel \"%s\" foi utilizada antes de ser declarada\n", name->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", name->lex_ident_t.line, name->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma atribuicao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_UNDECLARED);
     }
     if (entry->nature != nat_identifier) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a funcao \"%s\" foi utilizada como variavel\n", name->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", name->lex_ident_t.line, name->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma atribuicao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_FUNCTION);
     }
     ast_t *assignment = ast_new(ast_assignment);
@@ -533,11 +539,17 @@ ast_t *reduce_command_call(ast_t *commands, lexeme_t *name, list_t *arguments) {
     ast_t *call = ast_new(ast_call);
     name_entry_t *entry = scope_find(current_scope, name->lex_ident_t.value);
     if (entry == NULL) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a funcao \"%s\" foi utilizada antes de ser declarada\n", name->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", name->lex_ident_t.line, name->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma chamada de funcao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_UNDECLARED);
     }
     if (entry->nature != nat_function) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a variavel \"%s\" foi utilizada como funcao\n", name->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", name->lex_ident_t.line, name->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma chamada de funcao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_VARIABLE);
     }
     call->type = entry->type;
@@ -715,11 +727,17 @@ ast_t *reduce_expr_ident(lexeme_t *literal) {
     ast_t *expr = ast_new(ast_ident);
     name_entry_t *entry = scope_find(current_scope, literal->lex_ident_t.value);
     if (entry == NULL) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a variavel \"%s\" foi utilizada antes de ser declarada\n", literal->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", literal->lex_ident_t.line, literal->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma expressao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_UNDECLARED);
     }
     if (entry->nature != nat_identifier) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a funcao \"%s\" foi utilizada como variavel\n", literal->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", literal->lex_ident_t.line, literal->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma expressao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_FUNCTION);
     }
     expr->type = entry->type;
@@ -752,11 +770,17 @@ ast_t *reduce_expr_call(lexeme_t *literal, list_t *arguments) {
     ast_t *call = ast_new(ast_call);
     name_entry_t *entry = scope_find(current_scope, literal->lex_ident_t.value);
     if (entry == NULL) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a funcao \"%s\" foi utilizada antes de ser declarada\n", literal->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", literal->lex_ident_t.line, literal->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma expressao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_UNDECLARED);
     }
     if (entry->nature != nat_function) {
-        // TODO - Didio: write message
+        fprintf(stderr, "ERRO: a variavel \"%s\" foi utilizada como funcao\n", literal->lex_ident_t.value);
+        fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", literal->lex_ident_t.line, literal->lex_ident_t.column);
+        fprintf(stderr, "- Contexto: em uma expressao na funcao \"%s\"\n",
+                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
         exit(ERR_VARIABLE);
     }
     call->type = entry->type;
