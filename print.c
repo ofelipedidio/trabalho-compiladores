@@ -153,6 +153,9 @@ void print_scope(FILE *file, scope_t *scope) {
         print_type(file, entry->type);
         fprintf(file, "] [offset = %ld, line = %ld, column = %ld]\n", entry->offset, entry->line, entry->column);
     }
+    if (scope->parent != NULL) {
+        print_scope(file, scope->parent);
+    }
 }
 
 void print_ast_node(FILE *file, ast_t *ast) {
