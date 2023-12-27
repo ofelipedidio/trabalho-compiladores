@@ -907,11 +907,11 @@ uint64_t sizeof_type(type_t type) {
         case type_undefined:
             return 0;
         case type_int:
-            return 4;
+            return 1;
         case type_float:
             return 8;
         case type_bool:
-            return 4;
+            return 1;
     }
 }
 
