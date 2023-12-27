@@ -1,7 +1,0 @@
-(int a, float b) >= float ! e { }
-
-int y, z;
-
-(int c, float d) >= float ! f {
-    return 1;
-}
