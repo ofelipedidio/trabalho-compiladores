@@ -804,8 +804,14 @@ scope_t *scope_new(scope_t *parent) {
         exit(EXIT_FAILURE);
     }
     scope->parent = parent;
-    scope->size = 0;
     scope->entries = empty_list();
+    if (scope->parent == NULL || scope->parent->parent == NULL) {
+        scope->size = 0;
+        scope->total_size = 0;
+    } else {
+        scope->size = scope->parent->size;
+        scope->total_size = scope->size;
+    }
     return scope;
 }
 
@@ -878,7 +884,20 @@ int register_function(scope_t *scope, type_t type, lexeme_t *lexeme) {
     name_entry->line = lexeme->lex_ident_t.line;
     name_entry->column = lexeme->lex_ident_t.column;
     name_entry->offset = scope->size;
+    name_entry->function_label = iloc_next_id();
     scope->size += sizeof_type(type);
+    // Se for o escopo global, apenas adiciona o tamanho no total_size
+    // Senao, adiciona o tamanho ao total_size de todos os escopos ate 
+    // o escopo da funcao
+    if (scope->parent == NULL) {
+        scope->total_size += sizeof_type(type);
+    } else {
+        scope_t *s = scope;
+        while (s->parent != NULL) {
+            s->total_size += sizeof_type(type);
+            s = s->parent;
+        }
+    }
     list_push(scope->entries, name_entry);
     return 0;
 }

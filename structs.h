@@ -81,6 +81,7 @@ typedef struct scope {
     struct scope *parent;
     list_t *entries;
     uint64_t size;
+    uint64_t total_size;
 } scope_t;
 
 /******************************\
