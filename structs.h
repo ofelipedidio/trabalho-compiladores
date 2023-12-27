@@ -204,5 +204,6 @@ typedef struct ast {
     lexeme_t *lexeme;
     type_t type;
     iloc_program_t *program;
+    uint64_t value;
 } ast_t;
 
