@@ -170,6 +170,7 @@ void print_ast_node(FILE *file, ast_t *ast) {
         print_lexeme(file, ast->lexeme);
         fprintf(file, "]");
     }
+    fprintf(file, " [%ld]", ast->program->length);
     fprintf(file, "\n");
 }
 
