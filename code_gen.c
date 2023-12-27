@@ -53,6 +53,16 @@ void iloc_program_push(iloc_program_t *program, iloc_instruction_t instruction) 
     program->length++;
 }
 
+void iloc_push(iloc_program_t *program, iloc_instruction_type_t type, uint64_t r1, uint64_t r2, uint64_t r3) {
+    iloc_instruction_t *new_instructions = realloc(program->instructions, (program->length+1)*sizeof(iloc_instruction_t));
+    program->instructions = new_instructions;
+    program->instructions[program->length].instruction = type;
+    program->instructions[program->length].r1 = r1;
+    program->instructions[program->length].r2 = r2;
+    program->instructions[program->length].r3 = r3;
+    program->length++;
+}
+
 void iloc_program_append(iloc_program_t *dest, iloc_program_t *src) {
     iloc_instruction_t *new_instructions = realloc(dest->instructions, (dest->length+src->length)*sizeof(iloc_instruction_t));
     dest->instructions = new_instructions;
