@@ -59,6 +59,13 @@ typedef enum {
     nat_function,
 } nature_t;
 
+typedef enum {
+    rfp,  // Points to the base of the current activation record
+    rsp,  // Points to the top of the stack
+    rbss, // Points to the base of the data segment
+    rpc,  // Program counter
+} iloc_register_t;
+
 typedef struct {
     nature_t nature;
     type_t type;
@@ -66,6 +73,8 @@ typedef struct {
     uint64_t line;
     uint64_t column;
     uint64_t offset;
+    uint64_t function_label;
+    iloc_register_t base_register;
 } name_entry_t;
 
 typedef struct scope {

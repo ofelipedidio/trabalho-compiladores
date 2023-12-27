@@ -75,6 +75,34 @@ void iloc_program_free(iloc_program_t *program) {
     free(program);
 }
 
+iloc_register_t id_to_reg(uint64_t id) {
+    switch (id) {
+        case 0:
+            return rfp;
+        case 1:
+            return rsp;
+        case 2:
+            return rbss;
+        case 3:
+            return rsp;
+        default:
+            return rbss;
+    }
+}
+
+uint64_t reg_to_id(iloc_register_t reg) {
+    switch (reg) {
+        case rfp:
+            return 0;
+        case rsp:
+            return 1;
+        case rbss:
+            return 2;
+        case rpc:
+            return 3;
+    }
+}
+
 void iloc_instruction_to_string(iloc_instruction_t *instruction) {
     switch (instruction->instruction) {
         case nop:
@@ -786,6 +814,11 @@ int register_variable(scope_t *scope, type_t type, lexeme_t *lexeme) {
     name_entry->line = lexeme->lex_ident_t.line;
     name_entry->column = lexeme->lex_ident_t.column;
     name_entry->offset = scope->size;
+    if (scope->parent == NULL) {
+        name_entry->base_register = rbss;
+    } else {
+        name_entry->base_register = rfp;
+    }
     scope->size += sizeof_type(type);
     list_push(scope->entries, name_entry);
     return 0;
