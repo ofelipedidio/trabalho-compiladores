@@ -156,6 +156,22 @@ void iloc_instruction_to_string(iloc_instruction_t *instruction) {
         case load_ai:
             fprintf(stdout, "loadAI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = Memoria(r1 + c2)
             break;
+        case load_ai_r:
+            switch (id_to_reg(instruction->r1)) {
+                case rfp:
+                    fprintf(stdout, "loadAI rfp, %ld => r%ld\n", instruction->r2, instruction->r3); // r3 = Memoria(r1 + c2)
+                    break;
+                case rsp:
+                    fprintf(stdout, "loadAI sp, %ld => r%ld\n",  instruction->r2, instruction->r3); // r3 = Memoria(r1 + c2)
+                    break;
+                case rbss:
+                    fprintf(stdout, "loadAI rbss, %ld => r%ld\n", instruction->r2, instruction->r3); // r3 = Memoria(r1 + c2)
+                    break;
+                case rpc:
+                    fprintf(stdout, "loadAI rpc, %ld => r%ld\n", instruction->r2, instruction->r3); // r3 = Memoria(r1 + c2)
+                    break;
+            }
+            break;
         case load_a0:
             fprintf(stdout, "loadA0 r%ld, r%ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = Memoria(r1 + r2)
             break;
@@ -176,6 +192,22 @@ void iloc_instruction_to_string(iloc_instruction_t *instruction) {
             break;
         case store_ai:
             fprintf(stdout, "storeAI r%ld => r%ld, %ld\n", instruction->r1, instruction->r2, instruction->r3); // Memoria(r2 + c3) = r1
+            break;
+        case store_ai_r:
+            switch (id_to_reg(instruction->r2)) {
+                case rfp:
+                    fprintf(stdout, "storeAI r%ld => rfp, %ld\n", instruction->r1, instruction->r3); // Memoria(r2 + c3) = r1
+                    break;
+                case rsp:
+                    fprintf(stdout, "storeAI r%ld => rsp, %ld\n", instruction->r1, instruction->r3); // Memoria(r2 + c3) = r1
+                    break;
+                case rbss:
+                    fprintf(stdout, "storeAI r%ld => rbss, %ld\n", instruction->r1, instruction->r3); // Memoria(r2 + c3) = r1
+                    break;
+                case rpc:
+                    fprintf(stdout, "storeAI r%ld => rpc, %ld\n", instruction->r1, instruction->r3); // Memoria(r2 + c3) = r1
+                    break;
+            }
             break;
         case store_ao:
             fprintf(stdout, "storeAO r%ld => r%ld, r%ld\n", instruction->r1, instruction->r2, instruction->r3); // Memoria(r2 + r3) = r1
