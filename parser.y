@@ -101,8 +101,8 @@ global_list: global_list type comma_separated_identifiers_1 ';'
     { $$ = reduce_global_list_variable($1, $2, $3); };
 
 /* Global function */
-global_list: global_list push_scope function_header '{' command_list '}' pop_scope 
-    { $$ = reduce_global_list_function($1, $3, $5); };
+global_list: global_list function_header '{' command_list '}' pop_scope 
+    { $$ = reduce_global_list_function($1, $2, $4); };
 function_header: '(' comma_separated_variables_0 ')' TK_OC_GE type '!' TK_IDENTIFICADOR 
     { $$ = reduce_function_header($2, $5, $7); };
 

@@ -9,7 +9,7 @@
 /**************\
 * Global state *
 \**************/
-uint64_t last_id = 0;
+uint64_t last_id = 1;
 scope_t *current_scope = NULL;
 scope_t *global_scope = NULL;
 
@@ -299,6 +299,7 @@ ast_t *ast_new(ast_label_t label) {
     ast->lexeme = NULL;
     ast->type = type_undefined;
     ast->program = iloc_program_new();
+    ast->value = 0;
     return ast;
 }
 
@@ -317,21 +318,28 @@ void ast_push(ast_t *parent, ast_t *child) {
         parent->children = new_children;
         parent->capacity = new_capacity;
     }
-    parent->children[parent->length] = child;
-    parent->length++;
+    parent->children[parent->length] = child; parent->length++;
 }
 
 /********************\
 * Reduction Handlers *
 \********************/
+char *current_function;
 void reduce_push_scope() {
-    current_scope = scope_new(current_scope);
+    if (current_scope == NULL) {
+        current_scope = scope_new(current_scope, strdup("global_scope"));
+    } else if (current_scope->parent == NULL) {
+        current_scope = scope_new(current_scope, strdup(current_function));
+    } else {
+        current_scope = scope_new(current_scope, strdup("inner_scope"));
+    }
     if (current_scope->parent == NULL) {
         global_scope = current_scope;
     }
 }
 
 void reduce_pop_scope() {
+    print_scope(stderr, current_scope);
     scope_t *temp_scope = current_scope;
     current_scope = current_scope->parent;
     scope_free(temp_scope);
@@ -341,6 +349,15 @@ void reduce_pop_scope() {
 }
 
 ast_t *reduce_program(ast_t *global_list) {
+    name_entry_t *entry = scope_find(current_scope, "main");
+    if (global_list->value == 0) {
+        fprintf(stderr, "ERRO: O programa compilado nao contem a funcao \"main\"\n");
+        exit(ERR_ENTRY);
+    }
+
+    ast_t *program = ast_new(ast_program);
+    iloc_push(program->program, jump_i, global_list->value, 0, 0);
+    iloc_program_append(program->program, global_list->program);
     return global_list;
 }
 
@@ -385,11 +402,16 @@ ast_t *reduce_global_list_function(ast_t *global_list, ast_t *function_header, a
     iloc_push(node->program, label, entry->function_label, 0, 0);
     iloc_program_append(node->program, commands->program);
     iloc_program_append(global_list->program, node->program);
+    if (strcmp(function_header->lexeme->lex_ident_t.value, "main") == 0) {
+        global_list->value = entry->function_label;
+    }
     // Return
     return global_list;
 }
 
 ast_t *reduce_function_header(list_t *parameters, type_t type, lexeme_t *name) {
+    current_function = name->lex_ident_t.value;
+    reduce_push_scope();
     int var_res = register_function(current_scope->parent, type, name);
     if (var_res != 0) {
         fprintf(stderr, "- Contexto: na declaracao de funcao\n");
@@ -1151,7 +1173,7 @@ type_t type_infer(type_t left, type_t right) {
     }
 }
 
-scope_t *scope_new(scope_t *parent) {
+scope_t *scope_new(scope_t *parent, char *scope_name) {
     scope_t *scope = (scope_t*) malloc(sizeof(scope_t));
     if (scope == NULL) {
         fprintf(stderr, "ERROR: Failed to allocate memory for scope_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
@@ -1159,6 +1181,7 @@ scope_t *scope_new(scope_t *parent) {
     }
     scope->parent = parent;
     scope->entries = empty_list();
+    scope->scope_name = scope_name;
     if (scope->parent == NULL || scope->parent->parent == NULL) {
         scope->size = 0;
         scope->total_size = 0;
@@ -1180,6 +1203,7 @@ void scope_free(scope_t *scope) {
         name_entry_free(entry);
     }
     list_free(scope->entries);
+    free(scope->scope_name);
     free(scope);
 }
 

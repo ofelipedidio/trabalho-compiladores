@@ -10,6 +10,7 @@
 #define ERR_DECLARED   11 //2.2
 #define ERR_VARIABLE   20 //2.3
 #define ERR_FUNCTION   21 //2.3
+#define ERR_ENTRY       2
 
 /******************************\
 * Intermediate Code Generation *
@@ -114,7 +115,7 @@ lexeme_t *lexeme_clone(lexeme_t *lexeme);
 \*******************/
 type_t type_infer(type_t left, type_t right);
 
-scope_t *scope_new(scope_t *parent);
+scope_t *scope_new(scope_t *parent, char *scope_name);
 
 void name_entry_free(name_entry_t *entry);
 

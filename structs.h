@@ -82,6 +82,7 @@ typedef struct scope {
     list_t *entries;
     uint64_t size;
     uint64_t total_size;
+    char *scope_name;
 } scope_t;
 
 /******************************\
@@ -165,6 +166,7 @@ typedef struct {
 * Syntactic Analysis *
 \********************/
 typedef enum {
+    ast_program,
     ast_global_list,
     ast_var_decl,
     ast_func_decl,
