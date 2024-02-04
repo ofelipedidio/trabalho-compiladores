@@ -8,16 +8,15 @@
  */
 
 #include <stdio.h>
-#include "ast.h"
-#include "lexeme.h"
+#include "code_gen.h"
+#include "list.h"
+#include "structs.h"
+#include "print.h"
 
 extern int yyparse(void);
 extern int yylex_destroy(void);
 
 void *arvore = NULL;
-// void exporta (void *arvore);
-
-int recr_print_lines[1024];
 
 int main (int argc, char **argv) {
     int ret = yyparse(); 
@@ -27,10 +26,12 @@ int main (int argc, char **argv) {
         return ret;
     }
 
-    program_t *program = (program_t*) arvore;
+    ast_t *program = (ast_t*) arvore;
     if (program != NULL) {
         // ast_program_export(program);
-        ast_program_free(program);
+        // ast_program_free(program);
+        iloc_program_to_string(program->program);
+        print_ast(stderr, program);
     }
 
     return 0;
