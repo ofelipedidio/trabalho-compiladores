@@ -40,6 +40,7 @@ void temp() {
             case add:
                 // [add r1, r2 => r3]
                 // movl <r1>, %eax
+                fprintf(stdout, "movl %s, %%eax\n", x86_reg_to_string(int_to_x86(instruction.r1)));
                 // addl <r2>, %eax
                 // movl %eax, <r3>
 

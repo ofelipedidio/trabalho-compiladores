@@ -225,5 +225,20 @@ x86_register_t int_to_x86(int reg);
 // if (program->instructions[3].r1 == 64) {
 // program->instructions[3].r1 = x86_to_int(ebx);
 // }
-void allocated_registers(iloc_program_t *program);
+void allocated_registers(iloc_program_t *program) {
+    // 3 registrados
+    // for (instruction in program) {
+    //     if (instruction.r1 is new) {
+    //         start[r1] = time;
+    //     }
+    // }
+    // for (instruction in rev(program)) {
+    //     if (instruction.r1 is new) {
+    //         end[r1] = time;
+    //     }
+    // }
+}
+
+// #define x86_reg_to_string(x) ((x == ebx) ? "ebx" : ((x == ecx) ? "ecx" : (x == edx) ? "edx" : "<registrador desconhecido>"))
+#define x86_reg_to_string(x) "ebx"
 
