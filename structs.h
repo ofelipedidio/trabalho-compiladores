@@ -209,3 +209,21 @@ typedef struct ast {
     uint64_t value;
 } ast_t;
 
+typedef enum {
+    ebx,
+    ecx,
+    edx,
+} x86_register_t;
+
+uint64_t x86_to_int(x86_register_t reg);
+
+x86_register_t int_to_x86(int reg);
+
+// [Ideia do algoritmo de alocacao de registradores]
+// passar por tudo
+// alocar ebx para r64
+// if (program->instructions[3].r1 == 64) {
+// program->instructions[3].r1 = x86_to_int(ebx);
+// }
+void allocated_registers(iloc_program_t *program);
+

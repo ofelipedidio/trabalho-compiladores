@@ -624,9 +624,7 @@ ast_t *reduce_command_while(ast_t *commands, ast_t *cond, ast_t *block) {
     uint64_t label_continue = iloc_next_id();
     iloc_push(while_->program, label, new_label, 0, 0);
     iloc_program_append(while_->program, cond->program);
-    iloc_push(while_->program, load_i, 0, zero, 0);
-    iloc_push(while_->program, cmp_eq, cond->value, zero, cond_is_false);
-    iloc_push(while_->program, cbr, cond_is_false, label_break, label_continue);
+    iloc_push(while_->program, cbr, cond->value, label_break, label_continue);
     iloc_push(while_->program, label, label_continue, 0, 0);
     iloc_program_append(while_->program, block->program);
     iloc_push(while_->program, jump_i, new_label, 0, 0);

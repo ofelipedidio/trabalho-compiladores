@@ -6,7 +6,7 @@
 # Pedro Company Beck - 00324055
 #
 
-ETAPA=etapa5
+ETAPA=etapa6
 CC=gcc
 #CFLAGS=-fsanitize=address,leak -g
 CFLAGS=
