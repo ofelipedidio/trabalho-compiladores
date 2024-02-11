@@ -37,160 +37,206 @@ void temp() {
     for (uint64_t i = 0; i < tree->program->length; i++) {
         iloc_instruction_t instruction = tree->program->instructions[i];
         switch (instruction.instruction) {
-            case add:
-                // [add r1, r2 => r3]
-                // movl <r1>, %eax
-                fprintf(stdout, "movl %s, %%eax\n", x86_reg_to_string(int_to_x86(instruction.r1)));
-                // addl <r2>, %eax
-                // movl %eax, <r3>
+        case add:
+          // [add r1, r2 => r3]
+          // movl <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n", x86_reg_to_string(int_to_x86(instruction.r1)));
+          // addl <r2>, %eax
+          fprintf(stdout, "addl %s, %%eax\n", x86_reg_to_string(int_to_x86(instruction.r2)));
+          // movl %eax, <r3>
+          fprintf(stdout, "movl %%eax, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          break;
 
-                break;
-            case sub:
-                // [sub r1, r2 => r3]
-                // movl <r1>, %eax
-                // subl <r2>, %eax
-                // movl %eax, <r3>
-                break;
+        case sub:
+          // [sub r1, r2 => r3]
+          // movl <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n", x86_reg_to_string(int_to_x86(instruction.r1)));
+          // subl <r2>, %eax
+          fprintf(stdout, "subl %s, %%eax\n", x86_reg_to_string(int_to_x86(instruction.r2)));
+          // movl %eax, <r3>
+          fprintf(stdout, "movl %%eax, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          break;
 
-            case mult:
-                // [mult r1, r2 => r3]
-                // movl <r1>, %eax
-                // imull <r2>, %eax
-                // movl %eax, <r3>
-                break;
+        case mult:
+          // [mult r1, r2 => r3]
+          // movl <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          // imull <r2>, %eax
+          fprintf(stdout, "imull %s, %%eax\n", x86_reg_to_string(int_to_x86(instruction.r2)));
+          // movl %eax, <r3>
+          fprintf(stdout, "movl %%eax, %s\n" , x86_reg_to_string(int_to_x86(instruction.r3)));
+          break;
 
-            case _div:
-                // [div r1, r2 => r3]
-                // push %edx
-                // push %ecx
-                // movl	<r1>, %eax
-                // movl	<r2>, %ecx
-                // cltd
-                // idivl %ecx
-                // movl	%eax, <r3>
-                // pop %ecx
-                // pop %edx
-                break;
+        case _div:
+          // [div r1, r2 => r3]
+          // push %edx
+          fprintf(stdout, "push %%edx\n");
+          // push %ecx
+          fprintf(stdout, "push %%ecx\n");
+          // movl	<r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          // movl	<r2>, %ecx
+          fprintf(stdout, "movl %s, %%ecx\n" , x86_reg_to_string(int_to_x86(instruction.r2)));
+          // cltd
+          fprintf(stdout, "cltd\n");
+          // idivl %ecx
+          fprintf(stdout, "idivl %%ecx\n");
+          // movl	%eax, <r3>
+          fprintf(stdout, "movl %%eax, %s\n" , x86_reg_to_string(int_to_x86(instruction.r3)));
+          // pop %ecx
+          fprintf(stdout, "pop %%ecx\n");
+          // pop %edx
+          fprintf(stdout, "pop %%edx\n");
+          break;
 
-            case rsub_i:
-                // [rsubI r1, c2 => r3]
-                // movl $<c2>, %eax
-                // subl <r1>, %eax
-                // movl %eax, <r3>
-                break;
+        case rsub_i:
+          // [rsubI r1, c2 => r3]
+          // TODO : VER MAPEAMENTO DAS CONSTANTES (valores com c1, c2, etc)
+          // movl $<c2>, %eax
+          // subl <r1>, %eax
+          fprintf(stdout, "subl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          // movl %eax, <r3>
+          fprintf(stdout, "movl %%eax, %s\n" , x86_reg_to_string(int_to_x86(instruction.r3)));
+          break;
 
-            case load:
-                // [loadI c1 => r2]
-                // movl $<c1>, <r2>
-                break;
+        case load:
+          // [loadI c1 => r2]
+          // movl $<c1>, <r2>
+          break;
 
-            case load_ai_r:
-                // [loadAI reg(r1), c2 => r3]
-                // movl c2(<r1>), %eax
-                // movl %eax, r3(%rip)
-                break;
+        case load_ai_r:
+          // [loadAI reg(r1), c2 => r3]
+          // movl c2(<r1>), %eax
+          // movl %eax, r3(%rip)
+          break;
 
-            case store_ai:
-                // [storeAI r1 => reg(r2), c3]
-                // movl <r1>, c3(<r2>)
-                break;
+        case store_ai:
+          // [storeAI r1 => reg(r2), c3]
+          // movl <r1>, c3(<r2>)
+          break;
 
-            case cmp_lt:
-                // cmp_lt
-                //   movl    <r1>, %eax
-                //   cmpl    <r2>, %eax
-                //   jl    L2
-                //   movl    $0, <r3>
-                //   jmp    L3
-                // L2:
-                //   movl    $1, <r3>
-                // L3:
-                break;
+        case cmp_lt:
+          // cmp_lt
+          //   movl    <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          //   cmpl    <r2>, %eax
+          fprintf(stdout, "cmpl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r2)));
+          // TODO : VER MAPEAMENTO DAS LABELS
+          //   jl    L2
+          //   movl    $0, <r3>
+          fprintf(stdout, "movl $0, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          //   jmp    L3
+          // L2:
+          //   movl    $1, <r3>
+          fprintf(stdout, "movl $1, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          // L3:
+          break;
 
-            case cmp_le:
-                // cmp_le
-                //   movl    <r1>, %eax
-                //   cmpl    <r2>, %eax
-                //   jle    L2
-                //   movl    $0, <r3>
-                //   jmp    L3
-                // L2:
-                //   movl    $1, <r3>
-                // L3:
-                break;
+        case cmp_le:
+          // cmp_le
+          //   movl    <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          //   cmpl    <r2>, %eax
+          fprintf(stdout, "cmpl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r2)));
+          //   jle    L2
+          //   movl    $0, <r3>
+          fprintf(stdout, "movl $0, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          //   jmp    L3
+          // L2:
+          //   movl    $1, <r3>
+          fprintf(stdout, "movl $1, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          // L3:
+          break;
 
-            case cmp_eq:
-                // cmp_eq
-                //   movl    <r1>, %eax
-                //   cmpl    <r2>, %eax
-                //   je    L2
-                //   movl    $0, <r3>
-                //   jmp    L3
-                // L2:
-                //   movl    $1, <r3>
-                // L3:
-                break;
+        case cmp_eq:
+          // cmp_eq
+          //   movl    <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          //   cmpl    <r2>, %eax
+          fprintf(stdout, "cmpl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r2)));
+          //   je    L2
+          //   movl    $0, <r3>
+          fprintf(stdout, "movl $0, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          //   jmp    L3
+          // L2:
+          //   movl    $1, <r3>
+          fprintf(stdout, "movl $1, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          // L3:
+          break;
 
-            case cmp_ge:
-                // cmp_ge
-                //   movl    <r1>, %eax
-                //   cmpl    <r2>, %eax
-                //   jge    L2
-                //   movl    $0, <r3>
-                //   jmp    L3
-                // L2:
-                //   movl    $1, <r3>
-                // L3:
-                break;
+        case cmp_ge:
+          // cmp_ge
+          //   movl    <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          //   cmpl    <r2>, %eax
+          fprintf(stdout, "cmpl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r2)));
+          //   jge    L2
+          //   movl    $0, <r3>
+          fprintf(stdout, "movl $0, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          //   jmp    L3
+          // L2:
+          //   movl    $1, <r3>
+          fprintf(stdout, "movl $1, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          // L3:
+          break;
 
-            case cmp_gt:
-                // cmp_gt
-                //   movl    <r1>, %eax
-                //   cmpl    <r2>, %eax
-                //   jg    L2
-                //   movl    $0, <r3>
-                //   jmp    L3
-                // L2:
-                //   movl    $1, <r3>
-                // L3:
-                break;
+        case cmp_gt:
+          // cmp_gt
+          //   movl    <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          //   cmpl    <r2>, %eax
+          fprintf(stdout, "cmpl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r2)));
+          //   jg    L2
+          //   movl    $0, <r3>
+          fprintf(stdout, "movl $0, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          //   jmp    L3
+          // L2:
+          //   movl    $1, <r3>
+          fprintf(stdout, "movl $1, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          // L3:
+          break;
 
-            case cmp_ne:
-                // cmp_ne
-                //   movl    <r1>, %eax
-                //   cmpl    <r2>, %eax
-                //   jne    L2
-                //   movl    $0, <r3>
-                //   jmp    L3
-                // L2:
-                //   movl    $1, <r3>
-                // L3:
-                break;
+        case cmp_ne:
+          // cmp_ne
+          //   movl    <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          //   cmpl    <r2>, %eax
+          fprintf(stdout, "cmpl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r2)));
+          //   jne    L2
+          //   movl    $0, <r3>
+          fprintf(stdout, "movl $0, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          //   jmp    L3
+          // L2:
+          //   movl    $1, <r3>
+          fprintf(stdout, "movl $1, %s\n", x86_reg_to_string(int_to_x86(instruction.r3)));
+          // L3:
+          break;
 
-            case cbr:
-                // cbr
-                // movl <r1>, %eax
-                // jz L3
-                // jmp L2
-                // L3:
-                //
-                // L2:
-                break;
+        case cbr:
+          // cbr
+          // movl <r1>, %eax
+          fprintf(stdout, "movl %s, %%eax\n" , x86_reg_to_string(int_to_x86(instruction.r1)));
+          // jz L3
+          // jmp L2
+          // L3:
+          //
+          // L2:
+          break;
 
-            case jump_i:
-                // jmp <l1>
-                break;
+        case jump_i:
+          // jmp <l1>
+          break;
 
-            case label:
-                // l1:
-                break;
+        case label:
+          // l1:
+          break;
 
-            default:
-                fprintf(stderr, "[1]    42069 segmentation fault (core dumped)  %s\n", program_name);
-                // TODO - Didio: Removed the next print
-                fprintf(stderr, "Nao foi segfault, foi a instrucao %d\n", instruction.instruction); // DEBUG ONLY
-                exit(EXIT_FAILURE);
-                break;
+        default:
+          fprintf(stderr, "[1]    42069 segmentation fault (core dumped)  %s\n", program_name);
+          // TODO - Didio: Removed the next print
+          fprintf(stderr, "Nao foi segfault, foi a instrucao %d\n", instruction.instruction); // DEBUG ONLY
+          exit(EXIT_FAILURE);
+          break;
         }
     }
 }
