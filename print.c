@@ -144,14 +144,16 @@ void print_nature(FILE *file, nature_t nature) {
 }
 
 void print_scope(FILE *file, scope_t *scope) {
-    fprintf(file, "[Scope \"%s\"]\n", scope->scope_name);
+    // fprintf(file, "[Scope \"%s\"]\n", scope->scope_name);
     list_iterate(scope->entries, i) {
         name_entry_t *entry = list_get_as(scope->entries, i, name_entry_t);
+        /*
         fprintf(file, "- \"%s\" (", entry->lexeme->lex_ident_t.value);
         print_nature(file, entry->nature);
         fprintf(file, ") [");
         print_type(file, entry->type);
         fprintf(file, "] [offset = %ld, line = %ld, column = %ld]\n", entry->offset, entry->line, entry->column);
+        */
     }
     /*
     if (scope->parent != NULL) {

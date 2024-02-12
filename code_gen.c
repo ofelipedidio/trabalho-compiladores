@@ -105,8 +105,11 @@ uint64_t reg_to_id(iloc_register_t reg) {
 
 void iloc_instruction_to_string(iloc_instruction_t *instruction) {
     switch (instruction->instruction) {
-        case nop:
-            fprintf(stdout, "nop\n"); // does nothing
+        case push:
+            fprintf(stdout, "push r%ld\n", instruction->r1); // r3 = r1 + r2
+            break;
+        case pop:
+            fprintf(stdout, "pop r%ld\n", instruction->r1); // r3 = r1 + r2
             break;
         case add:
             fprintf(stdout, "add r%ld, r%ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 + r2
@@ -120,41 +123,8 @@ void iloc_instruction_to_string(iloc_instruction_t *instruction) {
         case _div:
             fprintf(stdout, "div r%ld, r%ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 / r2
             break;
-        case add_i:
-            fprintf(stdout, "addI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 + c2
-            break;
-        case sub_i:
-            fprintf(stdout, "subI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 - c2
-            break;
         case rsub_i:
             fprintf(stdout, "rsubI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = c2 - r1
-            break;
-        case mult_i:
-            fprintf(stdout, "multI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 * c2
-            break;
-        case div_i:
-            fprintf(stdout, "divI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 / c2
-            break;
-        case rdiv_i:
-            fprintf(stdout, "rdivI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = c2 / r1
-            break;
-        case lshift:
-            fprintf(stdout, "lshift r%ld, r%ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 << r2
-            break;
-        case lshift_i:
-            fprintf(stdout, "lshiftI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 << c2
-            break;
-        case rshift:
-            fprintf(stdout, "rshift r%ld, r%ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 >> r2
-            break;
-        case rshift_i:
-            fprintf(stdout, "rshiftI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = r1 >> c2
-            break;
-        case load:
-            fprintf(stdout, "load r%ld => r%ld\n", instruction->r1, instruction->r2); // r2 = Memoria(r1)
-            break;
-        case load_ai:
-            fprintf(stdout, "loadAI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = Memoria(r1 + c2)
             break;
         case load_ai_r:
             switch (id_to_reg(instruction->r1)) {
@@ -172,26 +142,8 @@ void iloc_instruction_to_string(iloc_instruction_t *instruction) {
                     break;
             }
             break;
-        case load_a0:
-            fprintf(stdout, "loadA0 r%ld, r%ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = Memoria(r1 + r2)
-            break;
-        case cload:
-            fprintf(stdout, "cload r%ld => r%ld\n", instruction->r1, instruction->r2); // caractere load
-            break;
-        case cload_ai:
-            fprintf(stdout, "cloadAI r%ld, %ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // caractere loadAI
-            break;
-        case cload_a0:
-            fprintf(stdout, "cloadA0 r%ld, r%ld => r%ld\n", instruction->r1, instruction->r2, instruction->r3); // caractere loadA0
-            break;
         case load_i:
             fprintf(stdout, "loadI %ld => r%ld\n", instruction->r1, instruction->r2); // r2 = c1
-            break;
-        case store:
-            fprintf(stdout, "store r%ld => r%ld\n", instruction->r1, instruction->r2); // Memoria(r2) = r1
-            break;
-        case store_ai:
-            fprintf(stdout, "storeAI r%ld => r%ld, %ld\n", instruction->r1, instruction->r2, instruction->r3); // Memoria(r2 + c3) = r1
             break;
         case store_ai_r:
             switch (id_to_reg(instruction->r2)) {
@@ -208,30 +160,6 @@ void iloc_instruction_to_string(iloc_instruction_t *instruction) {
                     fprintf(stdout, "storeAI r%ld => rpc, %ld\n", instruction->r1, instruction->r3); // Memoria(r2 + c3) = r1
                     break;
             }
-            break;
-        case store_ao:
-            fprintf(stdout, "storeAO r%ld => r%ld, r%ld\n", instruction->r1, instruction->r2, instruction->r3); // Memoria(r2 + r3) = r1
-            break;
-        case cstore:
-            fprintf(stdout, "cstore r%ld => r%ld\n", instruction->r1, instruction->r2); // caractere store
-            break;
-        case cstore_ai:
-            fprintf(stdout, "cstoreAI r%ld => r%ld, %ld\n", instruction->r1, instruction->r2, instruction->r3); // caractere storeAI
-            break;
-        case cstore_ao:
-            fprintf(stdout, "cstoreAO r%ld => r%ld, r%ld\n", instruction->r1, instruction->r2, instruction->r3); // caractere storeAO
-            break;
-        case i2i:
-            fprintf(stdout, "i2i r%ld => r%ld\n", instruction->r1, instruction->r2); // r2 = r1 para inteiros
-            break;
-        case c2c:
-            fprintf(stdout, "c2c r%ld => r%ld\n", instruction->r1, instruction->r2); // r2 = r1 para caracteres
-            break;
-        case c2i:
-            fprintf(stdout, "c2i r%ld => r%ld\n", instruction->r1, instruction->r2); // converte um caractere para um inteiro
-            break;
-        case i2c:
-            fprintf(stdout, "i2c r%ld => r%ld\n", instruction->r1, instruction->r2); // converte um inteiro para caractere
             break;
         case cmp_lt:
             fprintf(stdout, "cmp_LT r%ld, r%ld -> r%ld\n", instruction->r1, instruction->r2, instruction->r3); // r3 = true se r1 < r2, senão r3 = false
@@ -651,19 +579,23 @@ ast_t *reduce_expr_or(ast_t *left, ast_t *right) {
     uint64_t label_false = iloc_next_id();
     uint64_t label_true = iloc_next_id();
     uint64_t label_done = iloc_next_id();
+    uint64_t temp_val_1 = iloc_next_id();
+    uint64_t temp_val_2 = iloc_next_id();
+    uint64_t temp_val_3 = iloc_next_id();
+    uint64_t temp_val_4 = iloc_next_id();
     // Compute left
     iloc_program_append(new_expr->program, left->program);
     // Compare left to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, left->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_compute_right, label_true);
+    iloc_push(new_expr->program, load_i, 0, temp_val_1, 0);
+    iloc_push(new_expr->program, cmp_eq, left->value, temp_val_1, temp_val_3);
+    iloc_push(new_expr->program, cbr, temp_val_3, label_compute_right, label_true);
     // Compute right
     iloc_push(new_expr->program, label, label_compute_right, 0, 0);
     iloc_program_append(new_expr->program, right->program);
     // Compare right to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, right->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_false, label_true);
+    iloc_push(new_expr->program, load_i, 0, temp_val_2, 0);
+    iloc_push(new_expr->program, cmp_eq, right->value, temp_val_2, temp_val_4);
+    iloc_push(new_expr->program, cbr, temp_val_4, label_false, label_true);
     // The expression is false
     iloc_push(new_expr->program, label, label_false, 0, 0);
     iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
@@ -689,19 +621,23 @@ ast_t *reduce_expr_and(ast_t *left, ast_t *right) {
     uint64_t label_false = iloc_next_id();
     uint64_t label_true = iloc_next_id();
     uint64_t label_done = iloc_next_id();
+    uint64_t temp_val_1 = iloc_next_id();
+    uint64_t temp_val_2 = iloc_next_id();
+    uint64_t temp_val_3 = iloc_next_id();
+    uint64_t temp_val_4 = iloc_next_id();
     // Compute left
     iloc_program_append(new_expr->program, left->program);
     // Compare left to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, left->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_false, label_compute_right);
+    iloc_push(new_expr->program, load_i, 0, temp_val_1, 0);
+    iloc_push(new_expr->program, cmp_eq, left->value, temp_val_1, temp_val_3);
+    iloc_push(new_expr->program, cbr, temp_val_3, label_false, label_compute_right);
     // Compute right
     iloc_push(new_expr->program, label, label_compute_right, 0, 0);
     iloc_program_append(new_expr->program, right->program);
     // Compare right to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, right->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_false, label_true);
+    iloc_push(new_expr->program, load_i, 0, temp_val_2, 0);
+    iloc_push(new_expr->program, cmp_eq, right->value, temp_val_2, temp_val_4);
+    iloc_push(new_expr->program, cbr, temp_val_4, label_false, label_true);
     // The expression is false
     iloc_push(new_expr->program, label, label_false, 0, 0);
     iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
@@ -734,11 +670,11 @@ ast_t *reduce_expr_eq(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -763,11 +699,11 @@ ast_t *reduce_expr_ne(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -792,11 +728,11 @@ ast_t *reduce_expr_lt(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -821,11 +757,11 @@ ast_t *reduce_expr_gt(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -850,11 +786,11 @@ ast_t *reduce_expr_le(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -871,19 +807,20 @@ ast_t *reduce_expr_ge(ast_t *left, ast_t *right) {
     uint64_t label_true = iloc_next_id();
     uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
+    uint64_t temp_val_1 = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
-    iloc_push(new_expr->program, cmp_ge, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
+    iloc_push(new_expr->program, cmp_ge, left->value, right->value, temp_val_1);
+    iloc_push(new_expr->program, cbr, temp_val_1, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -893,15 +830,18 @@ ast_t *reduce_expr_ge(ast_t *left, ast_t *right) {
 ast_t *reduce_expr_add(ast_t *left, ast_t *right) {
     ast_t *new_expr = ast_new(ast_expr_add);
     new_expr->type = type_infer(left->type, right->type);
+    uint64_t temp_val_1 = iloc_next_id();
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
+    iloc_push(new_expr->program, push, left->value, 0, 0);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
-    iloc_push(new_expr->program, add, left->value, right->value, new_expr->value);
+    iloc_push(new_expr->program, pop, temp_val_1, 0, 0);
+    iloc_push(new_expr->program, add, temp_val_1, right->value, new_expr->value);
     // Return
     return new_expr;
 }
@@ -909,15 +849,18 @@ ast_t *reduce_expr_add(ast_t *left, ast_t *right) {
 ast_t *reduce_expr_sub(ast_t *left, ast_t *right) {
     ast_t *new_expr = ast_new(ast_expr_sub);
     new_expr->type = type_infer(left->type, right->type);
+    uint64_t temp_val_1 = iloc_next_id();
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
+    iloc_push(new_expr->program, push, left->value, 0, 0);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
-    iloc_push(new_expr->program, sub, left->value, right->value, new_expr->value);
+    iloc_push(new_expr->program, pop, temp_val_1, 0, 0);
+    iloc_push(new_expr->program, sub, temp_val_1, right->value, new_expr->value);
     // Return
     return new_expr;
 }
@@ -1006,11 +949,11 @@ ast_t *reduce_expr_not(ast_t *expr) {
     iloc_push(new_expr->program, cbr,    zero,                label_expr_is_false, label_expr_is_true);
     // If expr is 0, set new_expr to 1
     iloc_push(new_expr->program, label,  label_expr_is_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value,     1, 0);
+    iloc_push(new_expr->program, load_i,      1,new_expr->value, 0);
     iloc_push(new_expr->program, jump_i,   label_done,          0, 0);
     // If expr is not 0, set new_expr to 0
     iloc_push(new_expr->program, label,  label_expr_is_true,  0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value,     0, 0);
+    iloc_push(new_expr->program, load_i,      0,new_expr->value, 0);
     iloc_push(new_expr->program, label,  label_done,          0, 0);
     // Return
     return new_expr;
@@ -1283,11 +1226,11 @@ uint64_t sizeof_type(type_t type) {
         case type_undefined:
             return 0;
         case type_int:
-            return 1;
+            return 4;
         case type_float:
             return 8;
         case type_bool:
-            return 1;
+            return 4;
     }
 }
 
@@ -1307,3 +1250,218 @@ name_entry_t *scope_find(scope_t *scope, char *name) {
     return NULL;
 }
 
+/*******************\
+*      ETAPA 6      *
+\*******************/
+typedef struct {
+    uint64_t register_id;
+    uint64_t start;
+    uint64_t end;
+} reg_alloc_entry_t;
+
+typedef nlist_definition(reg_alloc_entry_t) rae_list_t;
+
+typedef struct graph {
+    uint64_t register_id;
+    nlist_definition(struct graph*) next;
+} graph_node_t;
+
+typedef nlist_definition(graph_node_t) graph_t;
+
+void handle_instruction(rae_list_t *list, iloc_instruction_t *instruction, uint64_t index) {
+    // Handle r1
+    switch (instruction->instruction) {
+        case add:
+        case sub:
+        case mult:
+        case _div:
+        case rsub_i:
+        case store_ai_r:
+        case cmp_lt:
+        case cmp_le:
+        case cmp_eq:
+        case cmp_ge:
+        case cmp_gt:
+        case cmp_ne:
+        case cbr:
+        case push:
+        case pop:
+            // Has r1
+            {
+                reg_alloc_entry_t *found;
+                nlist_find(reg_alloc_entry_t, *list, item, item.register_id == instruction->r1, found);
+                if (found == NULL) {
+                    reg_alloc_entry_t new_item;
+                    new_item.register_id = instruction->r1;
+                    new_item.start = index;
+                    new_item.end = index;
+                    nlist_insert(reg_alloc_entry_t, *list, new_item);
+                } else {
+                    found->end = index;
+                }
+            }
+            break;
+
+        case load_i:
+        case jump_i:
+        case label:
+        case load_ai_r:
+            // Does not have r1
+            break;
+
+        default:
+            // Error
+            fprintf(stderr, "Instruction %d error #1\n", instruction->instruction);
+            exit(EXIT_FAILURE);
+            break;
+    }
+
+    // Handle r2
+    switch (instruction->instruction) {
+        case add:
+        case sub:
+        case mult:
+        case _div:
+        case load_i:
+        case cmp_lt:
+        case cmp_le:
+        case cmp_eq:
+        case cmp_ge:
+        case cmp_gt:
+        case cmp_ne:
+            // Has r2
+            {
+                reg_alloc_entry_t *found;
+                nlist_find(reg_alloc_entry_t, *list, item, item.register_id == instruction->r2, found);
+                if (found == NULL) {
+                    reg_alloc_entry_t new_item;
+                    new_item.register_id = instruction->r2;
+                    new_item.start = index;
+                    new_item.end = index;
+                    nlist_insert(reg_alloc_entry_t, *list, new_item);
+                } else {
+                    found->end = index;
+                }
+            }
+            break;
+
+        case cbr:
+        case jump_i:
+        case label:
+        case rsub_i:
+        case store_ai_r:
+        case load_ai_r:
+        case push:
+        case pop:
+            // Does not have r2
+            break;
+
+        default:
+            // Error
+            fprintf(stderr, "Instruction %d error #2\n", instruction->instruction);
+            exit(EXIT_FAILURE);
+            break;
+    }
+
+    // Handle r3
+    switch (instruction->instruction) {
+        case add:
+        case sub:
+        case mult:
+        case _div:
+        case rsub_i:
+        case load_ai_r:
+        case cmp_lt:
+        case cmp_le:
+        case cmp_eq:
+        case cmp_ge:
+        case cmp_gt:
+        case cmp_ne:
+            // Has r3
+            {
+                reg_alloc_entry_t *found;
+                nlist_find(reg_alloc_entry_t, *list, item, item.register_id == instruction->r3, found);
+                if (found == NULL) {
+                    reg_alloc_entry_t new_item;
+                    new_item.register_id = instruction->r3;
+                    new_item.start = index;
+                    new_item.end = index;
+                    nlist_insert(reg_alloc_entry_t, *list, new_item);
+                } else {
+                    found->end = index;
+                }
+            }
+            break;
+
+        case store_ai_r:
+        case load_i:
+        case cbr:
+        case jump_i:
+        case label:
+        case push:
+        case pop:
+            // Does not have r3
+            break;
+
+        default:
+            // Error
+            fprintf(stderr, "Instruction %d error #3\n", instruction->instruction);
+            exit(EXIT_FAILURE);
+            break;
+    }
+}
+
+void allocated_registers(iloc_program_t *program) {
+    iloc_program_t *new_program = iloc_program_new();
+    rae_list_t list;
+    nlist_init(reg_alloc_entry_t, list);
+
+    int64_t ebx = -1;
+    int64_t ecx = -1;
+    int64_t edx = -1;
+
+    reg_alloc_entry_t *found;
+    for (uint64_t i = 0; i < program->length; i++) {
+        handle_instruction(&list, &program->instructions[i], i);
+    }
+
+    for (size_t i = 0; i < list.length; i++) {
+        reg_alloc_entry_t rae = nlist_get_unsafe(list, i);
+        fprintf(stderr, "%lu [%lu..=%lu]\n", rae.register_id, rae.start, rae.end);
+    }
+
+    graph_t graph;
+    nlist_init(graph_node_t, graph);
+
+    for (size_t i = 0; i < list.length; i++) {
+        reg_alloc_entry_t entry = nlist_get_unsafe(list, i);
+
+        graph_node_t node;
+        nlist_init(graph_node_t*, node.next);
+        node.register_id = entry.register_id;
+        nlist_insert(graph_node_t, graph, node);
+
+        for (size_t j = 0; j < i; j++) {
+            reg_alloc_entry_t other = nlist_get_unsafe(list, j);
+
+            if ((entry.start <= other.start && other.start <= entry.end)
+                    || (other.start <= entry.start && entry.start <= other.end)) {
+                nlist_insert(graph_node_t*, nlist_get_unsafe(graph, i).next, &nlist_get_unsafe(graph, j));
+                nlist_insert(graph_node_t*, nlist_get_unsafe(graph, j).next, &nlist_get_unsafe(graph, i));
+            }
+        }
+    }
+
+    for (size_t i = 0; i < graph.length; i++) {
+        graph_node_t node = nlist_get_unsafe(graph, i);
+
+        fprintf(stdout, "%lu [ ", node.register_id);
+
+        for (size_t j = 0; j < node.next.length; j++) {
+            graph_node_t *next = nlist_get_unsafe(node.next, j);
+            fprintf(stdout, "%lu, ", next->register_id);
+        }
+
+        fprintf(stdout, "]\n");
+    }
+}
