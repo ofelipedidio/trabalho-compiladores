@@ -1,4 +1,13 @@
-int x;
+int n;
+int f;
+int b;
+
 () >= int ! main {
-    x = x + x * x + x;
+    n = 15;
+
+    f = (n % 3) == 0;
+    b = (n % 5) == 0;
+
+    return 2*f+b;
 }
+

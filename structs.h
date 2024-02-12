@@ -209,7 +209,7 @@ typedef struct ast {
     uint64_t capacity;
     lexeme_t *lexeme;
     type_t type;
-    iloc_program_t *program;
+    nlist_definition(char*) _program;
     uint64_t value;
 } ast_t;
 

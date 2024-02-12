@@ -7,15 +7,15 @@
 #include "structs.h"
 
 /**************\
-* Global state *
-\**************/
+ * Global state *
+ \**************/
 uint64_t last_id = 1;
 scope_t *current_scope = NULL;
 scope_t *global_scope = NULL;
 
 /******************************\
-* Intermediate Code Generation *
-\******************************/
+ * Intermediate Code Generation *
+ \******************************/
 uint64_t iloc_next_id() {
     return last_id++;
 }
@@ -204,8 +204,8 @@ void iloc_program_to_string(iloc_program_t *program) {
 }
 
 /********************\
-* Syntactic Analysis *
-\********************/
+ * Syntactic Analysis *
+ \********************/
 #define AST_INITIAL_LENGTH 3
 
 ast_t *ast_new(ast_label_t label) {
@@ -226,8 +226,7 @@ ast_t *ast_new(ast_label_t label) {
     ast->children = children;
     ast->lexeme = NULL;
     ast->type = type_undefined;
-    ast->program = iloc_program_new();
-    ast->value = 0;
+    nlist_init(char*, ast->_program);
     return ast;
 }
 
@@ -250,8 +249,8 @@ void ast_push(ast_t *parent, ast_t *child) {
 }
 
 /********************\
-* Reduction Handlers *
-\********************/
+ * Reduction Handlers *
+ \********************/
 char *current_function;
 void reduce_push_scope() {
     if (current_scope == NULL) {
@@ -267,6 +266,9 @@ void reduce_push_scope() {
 }
 
 void reduce_pop_scope() {
+    if (current_scope == global_scope) {
+        return;
+    }
     print_scope(stderr, current_scope);
     scope_t *temp_scope = current_scope;
     current_scope = current_scope->parent;
@@ -276,6 +278,10 @@ void reduce_pop_scope() {
     }
 }
 
+char str_buffer[16*1024];
+#define asm_push(list, ...) sprintf(str_buffer, __VA_ARGS__); nlist_insert(char*, list, strdup(str_buffer))
+#define asm_append(list, other) for (size_t i = 0; i < other.length; i++) { nlist_insert(char*, list, strdup(other.items[i])); }
+
 ast_t *reduce_program(ast_t *global_list) {
     name_entry_t *entry = scope_find(current_scope, "main");
     if (global_list->value == 0) {
@@ -284,9 +290,33 @@ ast_t *reduce_program(ast_t *global_list) {
     }
 
     ast_t *program = ast_new(ast_program);
-    iloc_push(program->program, jump_i, global_list->value, 0, 0);
-    iloc_program_append(program->program, global_list->program);
-    return global_list;
+    asm_push(program->_program, ".text\n");
+
+    list_iterate(global_scope->entries, i) {
+        if (list_get_as(global_scope->entries, i, name_entry_t)->nature != nat_identifier) {
+            continue;
+        }
+        char *txt = list_get_as(global_scope->entries, i, name_entry_t)->lexeme->lex_ident_t.value;
+        // fprintf(stderr, "%s\n", txt);
+        asm_push(program->_program, ".globl %s\n", txt);
+        asm_push(program->_program, ".bss\n");
+        asm_push(program->_program, ".align 4\n");
+        asm_push(program->_program, ".type %s, @object\n", txt);
+        asm_push(program->_program, ".size %s, 4\n", txt);
+        asm_push(program->_program, "%s:\n", txt);
+        asm_push(program->_program, ".zero 4\n");
+    }
+
+    asm_push(program->_program, ".text\n");
+    asm_push(program->_program, ".globl main\n");
+    asm_push(program->_program, ".type main, @function\n");
+
+    asm_append(program->_program, global_list->_program);
+
+    asm_push(program->_program, ".section .note.GNU-stack,\"\",@progbits\n");
+
+
+    return program;
 }
 
 ast_t *reduce_global_list_empty() {
@@ -308,7 +338,7 @@ ast_t *reduce_global_list_variable(ast_t *global_list, type_t type, list_t *name
             }
             exit(ERR_DECLARED);
         }
-        
+
         ast_t *node = ast_new(ast_var_decl);
         node->type = type;
         node->lexeme = lexeme;
@@ -327,9 +357,18 @@ ast_t *reduce_global_list_function(ast_t *global_list, ast_t *function_header, a
     ast_push(global_list, node);
     // ILOC
     name_entry_t *entry = scope_find(current_scope, function_header->lexeme->lex_ident_t.value);
-    iloc_push(node->program, label, entry->function_label, 0, 0);
-    iloc_program_append(node->program, commands->program);
-    iloc_program_append(global_list->program, node->program);
+    asm_push(node->_program, "%s:\n", function_header->lexeme->lex_ident_t.value);
+    asm_push(node->_program, "endbr64\n");
+    asm_push(node->_program, "pushq %%rbp\n");
+    asm_push(node->_program, "movq %%rsp, %%rbp\n");
+
+    asm_append(node->_program, commands->_program);
+    asm_push(node->_program, "movl $1, %%eax\n");
+    asm_push(node->_program, "popq %%rbp\n");
+    asm_push(node->_program, "ret\n");
+
+    asm_append(global_list->_program, node->_program);
+
     if (strcmp(function_header->lexeme->lex_ident_t.value, "main") == 0) {
         global_list->value = entry->function_label;
     }
@@ -351,7 +390,7 @@ ast_t *reduce_function_header(list_t *parameters, type_t type, lexeme_t *name) {
         }
         exit(ERR_DECLARED);
     }
-    
+
     ast_t *header = ast_new(ast_func_header);
     header->type = type;
     header->lexeme = name;
@@ -391,7 +430,7 @@ ast_t *reduce_command_variable(ast_t *commands, type_t type, list_t *names) {
         int var_res = register_variable(current_scope, type, lexeme);
         if (var_res != 0) {
             fprintf(stderr, "- Contexto: dentro da funcao \"%s\"\n", 
-                list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
+                    list_get_as(global_scope->entries, global_scope->entries->length-1, name_entry_t)->lexeme->lex_ident_t.value);
             fprintf(stderr, "- Contexto: na linha %ld, coluna %ld\n", lexeme->lex_ident_t.line, lexeme->lex_ident_t.column);
             if (var_res == 1) {
                 fprintf(stderr, "- Contexto: previamente declarado como variavel\n");
@@ -430,9 +469,21 @@ ast_t *reduce_command_assignment(ast_t *commands, lexeme_t *name, ast_t *expr) {
     ast_push(assignment, expr);
     ast_push(commands, assignment);
     // ILOC
-    iloc_program_append(assignment->program, expr->program);
-    iloc_push(assignment->program, store_ai_r, expr->value, reg_to_id(entry->base_register), entry->offset);
-    iloc_program_append(commands->program, assignment->program);
+    asm_append(assignment->_program, expr->_program);
+    asm_push(assignment->_program, "// assignment (%s)\n", entry->lexeme->lex_ident_t.value);
+    switch (entry->base_register) {
+        case rbss:
+            asm_push(assignment->_program, "movl %%eax, %s(%%rip)\n", entry->lexeme->lex_ident_t.value);
+            break;
+        case rfp:
+            asm_push(expr->_program, "movl -%lu(%%rbp), %%eax\n", entry->offset);
+            break;
+        default:
+            fprintf(stderr, "Register error #1\n");
+            exit(EXIT_FAILURE);
+            break;
+    }
+    asm_append(commands->_program, assignment->_program);
     // Return
     return commands;
 }
@@ -472,8 +523,11 @@ ast_t *reduce_command_return(ast_t *commands, ast_t *expr) {
     ast_push(return_, expr);
     ast_push(commands, return_);
     // ILOC
-    // TODO - Didio: Handle functions
-    // Return
+    asm_push(return_->_program, "// Return\n");
+    asm_append(return_->_program, expr->_program);
+    asm_push(return_->_program, "popq %%rbp\n");
+    asm_push(return_->_program, "ret\n");
+    asm_append(commands->_program, return_->_program);
     return commands;
 }
 
@@ -484,28 +538,25 @@ ast_t *reduce_command_if_else(ast_t *commands, ast_t *cond, ast_t *then_block, a
     ast_push(if_, then_block);
     ast_push(if_, else_block);
     ast_push(commands, if_);
-    // ILOC
-    uint64_t zero = iloc_next_id();
-    uint64_t cond_is_false = iloc_next_id();
-    uint64_t label_then = iloc_next_id();
+    // Compute condition
     uint64_t label_else = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute condition
-    iloc_program_append(if_->program, cond->program);
-    // Compare condition
-    iloc_push(if_->program, load_i, 0, zero, 0);
-    iloc_push(if_->program, cmp_eq, cond->value, zero, cond_is_false);
-    iloc_push(if_->program, cbr, cond_is_false, label_else, label_then);
-    // Then block
-    iloc_push(if_->program, label, label_then, 0, 0);
-    iloc_program_append(if_->program, then_block->program);
-    iloc_push(if_->program, jump_i, label_done, 0, 0);
-    // Else block
-    iloc_push(if_->program, label, label_else, 0, 0);
-    iloc_program_append(if_->program, else_block->program);
-    // Done
-    iloc_push(if_->program, label, label_done, 0, 0);
-    iloc_program_append(commands->program, if_->program);
+
+    asm_push(if_->_program, "// if (expr)\n");
+    asm_append(if_->_program, cond->_program);
+    asm_push(if_->_program, "// if (cmp)\n");
+    asm_push(if_->_program, "and %%eax, %%eax\n");
+    asm_push(if_->_program, "jz L%lu\n", label_else);
+    asm_push(if_->_program, "// if (then)\n");
+    asm_append(if_->_program, then_block->_program);
+    asm_push(if_->_program, "jmp L%lu\n", label_done);
+    asm_push(if_->_program, "// if (else)\n");
+    asm_push(if_->_program, "L%lu:\n", label_else);
+    asm_append(if_->_program, else_block->_program);
+    asm_push(if_->_program, "// if (done)\n");
+    asm_push(if_->_program, "L%lu:\n", label_done);
+
+    asm_append(commands->_program, if_->_program);
     // Return
     return commands;
 }
@@ -518,22 +569,19 @@ ast_t *reduce_command_if(ast_t *commands, ast_t *cond, ast_t *then_block) {
     ast_push(if_, NULL);
     ast_push(commands, if_);
     // ILOC
-    uint64_t zero = iloc_next_id();
-    uint64_t cond_is_false = iloc_next_id();
-    uint64_t label_then = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute condition
-    iloc_program_append(if_->program, cond->program);
-    // Compare condition
-    iloc_push(if_->program, load_i, 0, zero, 0);
-    iloc_push(if_->program, cmp_eq, cond->value, zero, cond_is_false);
-    iloc_push(if_->program, cbr, cond_is_false, label_done, label_then);
-    // Then block
-    iloc_push(if_->program, label, label_then, 0, 0);
-    iloc_program_append(if_->program, then_block->program);
-    // Done
-    iloc_push(if_->program, label, label_done, 0, 0);
-    iloc_program_append(commands->program, if_->program);
+
+    asm_push(if_->_program, "// if (expr)\n");
+    asm_append(if_->_program, cond->_program);
+    asm_push(if_->_program, "// if (cmp)\n");
+    asm_push(if_->_program, "and %%eax, %%eax\n");
+    asm_push(if_->_program, "jz L%lu\n", label_done);
+    asm_push(if_->_program, "// if (then)\n");
+    asm_append(if_->_program, then_block->_program);
+    asm_push(if_->_program, "// if (done)\n");
+    asm_push(if_->_program, "L%lu:\n", label_done);
+
+    asm_append(commands->_program, if_->_program);
     // Return
     return commands;
 }
@@ -545,26 +593,30 @@ ast_t *reduce_command_while(ast_t *commands, ast_t *cond, ast_t *block) {
     ast_push(while_, block);
     ast_push(commands, while_);
     // ILOC
-    uint64_t new_label = iloc_next_id();
-    uint64_t zero = iloc_next_id();
-    uint64_t cond_is_false = iloc_next_id();
-    uint64_t label_break = iloc_next_id();
-    uint64_t label_continue = iloc_next_id();
-    iloc_push(while_->program, label, new_label, 0, 0);
-    iloc_program_append(while_->program, cond->program);
-    iloc_push(while_->program, cbr, cond->value, label_break, label_continue);
-    iloc_push(while_->program, label, label_continue, 0, 0);
-    iloc_program_append(while_->program, block->program);
-    iloc_push(while_->program, jump_i, new_label, 0, 0);
-    iloc_push(while_->program, label, label_break, 0, 0);
-    iloc_program_append(commands->program, while_->program);
+    uint64_t label_start = iloc_next_id();
+    uint64_t label_done = iloc_next_id();
+
+    asm_push(while_->_program, "// while (expr)\n");
+    asm_push(while_->_program, "L%lu:\n", label_start);
+    asm_append(while_->_program, cond->_program);
+    asm_push(while_->_program, "// while (cmp)\n");
+    asm_push(while_->_program, "and %%eax, %%eax\n");
+    asm_push(while_->_program, "jz L%lu\n", label_done);
+    asm_push(while_->_program, "// while (block)\n");
+    asm_append(while_->_program, block->_program);
+    asm_push(while_->_program, "jmp L%lu\n", label_start);
+    asm_push(while_->_program, "// while (done)\n");
+    asm_push(while_->_program, "L%lu:\n", label_done);
+
+    asm_append(commands->_program, while_->_program);
     // Return
     return commands;
 }
 
 ast_t *reduce_command_block(ast_t *commands, ast_t *block) {
     ast_push(commands, block);
-    iloc_program_append(commands->program, block->program);
+    asm_push(commands->_program, "// block\n");
+    asm_append(commands->_program, block->_program);
     return commands;
 }
 
@@ -574,38 +626,36 @@ ast_t *reduce_expr_or(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    uint64_t label_compute_right = iloc_next_id();
+    uint64_t label_right = iloc_next_id();
     uint64_t label_false = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    uint64_t temp_val_1 = iloc_next_id();
-    uint64_t temp_val_2 = iloc_next_id();
-    uint64_t temp_val_3 = iloc_next_id();
-    uint64_t temp_val_4 = iloc_next_id();
-    // Compute left
-    iloc_program_append(new_expr->program, left->program);
-    // Compare left to 0
-    iloc_push(new_expr->program, load_i, 0, temp_val_1, 0);
-    iloc_push(new_expr->program, cmp_eq, left->value, temp_val_1, temp_val_3);
-    iloc_push(new_expr->program, cbr, temp_val_3, label_compute_right, label_true);
-    // Compute right
-    iloc_push(new_expr->program, label, label_compute_right, 0, 0);
-    iloc_program_append(new_expr->program, right->program);
-    // Compare right to 0
-    iloc_push(new_expr->program, load_i, 0, temp_val_2, 0);
-    iloc_push(new_expr->program, cmp_eq, right->value, temp_val_2, temp_val_4);
-    iloc_push(new_expr->program, cbr, temp_val_4, label_false, label_true);
-    // The expression is false
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // The expression is true
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// or (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "// or (cmp)\n");
+    asm_push(new_expr->_program, "and %%eax, %%eax\n");
+    asm_push(new_expr->_program, "jz L%lu\n", label_right);
+    // True
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // Right
+    asm_push(new_expr->_program, "L%lu:\n", label_right);
+    asm_push(new_expr->_program, "// or (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    asm_push(new_expr->_program, "// or (cmp)\n");
+    asm_push(new_expr->_program, "and %%eax, %%eax\n");
+    asm_push(new_expr->_program, "jz L%lu\n", label_false);
+    // True
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // False
+    asm_push(new_expr->_program, "L%lu:\n", label_false);
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// or (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -616,38 +666,31 @@ ast_t *reduce_expr_and(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    uint64_t label_compute_right = iloc_next_id();
     uint64_t label_false = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    uint64_t temp_val_1 = iloc_next_id();
-    uint64_t temp_val_2 = iloc_next_id();
-    uint64_t temp_val_3 = iloc_next_id();
-    uint64_t temp_val_4 = iloc_next_id();
-    // Compute left
-    iloc_program_append(new_expr->program, left->program);
-    // Compare left to 0
-    iloc_push(new_expr->program, load_i, 0, temp_val_1, 0);
-    iloc_push(new_expr->program, cmp_eq, left->value, temp_val_1, temp_val_3);
-    iloc_push(new_expr->program, cbr, temp_val_3, label_false, label_compute_right);
-    // Compute right
-    iloc_push(new_expr->program, label, label_compute_right, 0, 0);
-    iloc_program_append(new_expr->program, right->program);
-    // Compare right to 0
-    iloc_push(new_expr->program, load_i, 0, temp_val_2, 0);
-    iloc_push(new_expr->program, cmp_eq, right->value, temp_val_2, temp_val_4);
-    iloc_push(new_expr->program, cbr, temp_val_4, label_false, label_true);
-    // The expression is false
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // The expression is true
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// and (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "// and (cmp)\n");
+    asm_push(new_expr->_program, "and %%eax, %%eax\n");
+    asm_push(new_expr->_program, "jz L%lu\n", label_false);
+    // Right
+    asm_push(new_expr->_program, "// and (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    asm_push(new_expr->_program, "// and (cmp)\n");
+    asm_push(new_expr->_program, "and %%eax, %%eax\n");
+    asm_push(new_expr->_program, "jz L%lu\n", label_false);
+    // True
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // False
+    asm_push(new_expr->_program, "L%lu:\n", label_false);
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// and (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -658,25 +701,31 @@ ast_t *reduce_expr_eq(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
     uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, cmp_eq, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// eq (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// eq (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Compare
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// eq (cmp)\n");
+    asm_push(new_expr->_program, "cmp %%ebx, %%eax\n");
+    asm_push(new_expr->_program, "jne L%lu\n", label_false);
+    // True
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // False
+    asm_push(new_expr->_program, "L%lu:\n", label_false);
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// eq (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -687,25 +736,31 @@ ast_t *reduce_expr_ne(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
     uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, cmp_ne, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// ne (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// ne (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Compare
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// ne (cmp)\n");
+    asm_push(new_expr->_program, "cmp %%ebx, %%eax\n");
+    asm_push(new_expr->_program, "jne L%lu\n", label_true);
+    // False
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // True
+    asm_push(new_expr->_program, "L%lu:\n", label_true);
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// ne (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -716,25 +771,31 @@ ast_t *reduce_expr_lt(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
     uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, cmp_lt, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// lt (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// lt (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Compare
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// lt (cmp)\n");
+    asm_push(new_expr->_program, "cmp %%eax, %%ebx\n");
+    asm_push(new_expr->_program, "jl L%lu\n", label_true);
+    // False
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // True
+    asm_push(new_expr->_program, "L%lu:\n", label_true);
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// lt (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -745,25 +806,31 @@ ast_t *reduce_expr_gt(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
     uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, cmp_gt, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// gt (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// gt (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Compare
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// gt (cmp)\n");
+    asm_push(new_expr->_program, "cmp %%eax, %%ebx\n");
+    asm_push(new_expr->_program, "ja L%lu\n", label_true);
+    // False
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // True
+    asm_push(new_expr->_program, "L%lu:\n", label_true);
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// gt (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -774,25 +841,31 @@ ast_t *reduce_expr_le(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
     uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, cmp_le, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// le (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// le (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Compare
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// le (cmp)\n");
+    asm_push(new_expr->_program, "cmp %%eax, %%ebx\n");
+    asm_push(new_expr->_program, "jle L%lu\n", label_true);
+    // False
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // True
+    asm_push(new_expr->_program, "L%lu:\n", label_true);
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// le (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -803,26 +876,31 @@ ast_t *reduce_expr_ge(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
     uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    uint64_t temp_val_1 = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, cmp_ge, left->value, right->value, temp_val_1);
-    iloc_push(new_expr->program, cbr, temp_val_1, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
+
+    // Left
+    asm_push(new_expr->_program, "// ge (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// ge (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Compare
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// ge (cmp)\n");
+    asm_push(new_expr->_program, "cmp %%eax, %%ebx\n");
+    asm_push(new_expr->_program, "jge L%lu\n", label_true);
+    // False
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    // True
+    asm_push(new_expr->_program, "L%lu:\n", label_true);
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
     // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
+    asm_push(new_expr->_program, "// ge (done)\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+
     // Return
     return new_expr;
 }
@@ -834,14 +912,18 @@ ast_t *reduce_expr_add(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_push(new_expr->program, push, left->value, 0, 0);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, pop, temp_val_1, 0, 0);
-    iloc_push(new_expr->program, add, temp_val_1, right->value, new_expr->value);
+    // Left
+    asm_push(new_expr->_program, "// add (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// add (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Opperation
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// add (op)\n");
+    asm_push(new_expr->_program, "addl %%ebx, %%eax\n");
+
     // Return
     return new_expr;
 }
@@ -853,14 +935,20 @@ ast_t *reduce_expr_sub(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_push(new_expr->program, push, left->value, 0, 0);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, pop, temp_val_1, 0, 0);
-    iloc_push(new_expr->program, sub, temp_val_1, right->value, new_expr->value);
+    // ILOC
+    // Left
+    asm_push(new_expr->_program, "// sub (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// sub (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Opperation
+    asm_push(new_expr->_program, "movl %%eax, %%ebx\n");
+    asm_push(new_expr->_program, "popq %%rax\n");
+    asm_push(new_expr->_program, "// sub (op)\n");
+    asm_push(new_expr->_program, "subl %%ebx, %%eax\n");
+
     // Return
     return new_expr;
 }
@@ -871,12 +959,18 @@ ast_t *reduce_expr_mul(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, mult, left->value, right->value, new_expr->value);
+    // Left
+    asm_push(new_expr->_program, "// mul (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    // Right
+    asm_push(new_expr->_program, "// mul (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    // Opperation
+    asm_push(new_expr->_program, "popq %%rbx\n");
+    asm_push(new_expr->_program, "// mul (op)\n");
+    asm_push(new_expr->_program, "imull %%ebx, %%eax\n");
+
     // Return
     return new_expr;
 }
@@ -887,12 +981,17 @@ ast_t *reduce_expr_div(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, _div, left->value, right->value, new_expr->value);
+    asm_push(new_expr->_program, "// div (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    asm_push(new_expr->_program, "// div (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    asm_push(new_expr->_program, "movl %%eax, %%ecx\n");
+    asm_push(new_expr->_program, "popq %%rax\n");
+    asm_push(new_expr->_program, "// div (op)\n");
+    asm_push(new_expr->_program, "cltd\n");
+    asm_push(new_expr->_program, "idivl %%ecx\n");
+
     // Return
     return new_expr;
 }
@@ -903,15 +1002,18 @@ ast_t *reduce_expr_mod(ast_t *left, ast_t *right) {
     ast_push(new_expr, left);
     ast_push(new_expr, right);
     // ILOC
-    new_expr->value = iloc_next_id();
-    uint64_t aux = iloc_next_id();
-    // Compute left and right
-    iloc_program_append(new_expr->program, left->program);
-    iloc_program_append(new_expr->program, right->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, _div, left->value, right->value, aux);
-    iloc_push(new_expr->program, mult, right->value, aux, aux);
-    iloc_push(new_expr->program, sub, left->value, aux, new_expr->value);
+    asm_push(new_expr->_program, "// mod (left)\n");
+    asm_append(new_expr->_program, left->_program);
+    asm_push(new_expr->_program, "pushq %%rax\n");
+    asm_push(new_expr->_program, "// mod (right)\n");
+    asm_append(new_expr->_program, right->_program);
+    asm_push(new_expr->_program, "movl %%eax, %%ecx\n");
+    asm_push(new_expr->_program, "popq %%rax\n");
+    asm_push(new_expr->_program, "// mod (op)\n");
+    asm_push(new_expr->_program, "cltd\n");
+    asm_push(new_expr->_program, "idivl %%ecx\n");
+    asm_push(new_expr->_program, "movl %%edx, %%eax\n");
+
     // Return
     return new_expr;
 }
@@ -921,12 +1023,12 @@ ast_t *reduce_expr_inv(ast_t *expr) {
     new_expr->type = expr->type;
     ast_push(new_expr, expr);
     // ILOC
-    new_expr->value = iloc_next_id();
-    // Compute expr
-    iloc_program_append(new_expr->program, expr->program);
-    // Compute new_expr
-    iloc_push(new_expr->program, load_i, 0,           new_expr->value, 0);
-    iloc_push(new_expr->program, rsub_i, expr->value, new_expr->value, new_expr->value);
+    asm_push(new_expr->_program, "// inv (expr)\n");
+    asm_append(new_expr->_program, expr->_program);
+    asm_push(new_expr->_program, "// inv (op)\n");
+    asm_push(new_expr->_program, "movl $0, %%ebx\n");
+    asm_push(new_expr->_program, "sub %%ebx, %%eax\n");
+
     // Return
     return new_expr;
 }
@@ -936,25 +1038,21 @@ ast_t *reduce_expr_not(ast_t *expr) {
     new_expr->type = expr->type;
     ast_push(new_expr, expr);
     // ILOC
-    new_expr->value = iloc_next_id();
-    uint64_t zero = iloc_next_id();
-    uint64_t label_expr_is_false = iloc_next_id();
-    uint64_t label_expr_is_true = iloc_next_id();
+    uint64_t label_false = iloc_next_id();
     uint64_t label_done = iloc_next_id();
-    // Compute expr
-    iloc_program_append(new_expr->program, expr->program);
-    // Compare expr to 0
-    iloc_push(new_expr->program, load_i, 0,                   zero, 0);
-    iloc_push(new_expr->program, cmp_eq, zero,                expr->value,   zero);
-    iloc_push(new_expr->program, cbr,    zero,                label_expr_is_false, label_expr_is_true);
-    // If expr is 0, set new_expr to 1
-    iloc_push(new_expr->program, label,  label_expr_is_false, 0, 0);
-    iloc_push(new_expr->program, load_i,      1,new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i,   label_done,          0, 0);
-    // If expr is not 0, set new_expr to 0
-    iloc_push(new_expr->program, label,  label_expr_is_true,  0, 0);
-    iloc_push(new_expr->program, load_i,      0,new_expr->value, 0);
-    iloc_push(new_expr->program, label,  label_done,          0, 0);
+
+    asm_push(new_expr->_program, "// not (expr)\n");
+    asm_append(new_expr->_program, expr->_program);
+    asm_push(new_expr->_program, "// not (op)\n");
+    asm_push(new_expr->_program, "and %%eax, %%eax\n");
+    asm_push(new_expr->_program, "jz L%lu\n", label_false);
+    asm_push(new_expr->_program, "movl $1, %%eax\n");
+    asm_push(new_expr->_program, "jmp L%lu\n", label_done);
+    asm_push(new_expr->_program, "L%lu:\n", label_false);
+    asm_push(new_expr->_program, "movl $0, %%eax\n");
+    asm_push(new_expr->_program, "L%lu:\n", label_done);
+    asm_push(new_expr->_program, "// not (done)\n");
+
     // Return
     return new_expr;
 }
@@ -981,8 +1079,20 @@ ast_t *reduce_expr_ident(lexeme_t *literal) {
     expr->type = entry->type;
     expr->lexeme = literal;
     // ILOC
-    expr->value = iloc_next_id();
-    iloc_push(expr->program, load_ai_r, reg_to_id(entry->base_register), entry->offset, expr->value);
+    asm_push(expr->_program, "// ident\n");
+    switch (entry->base_register) {
+        case rbss:
+            asm_push(expr->_program, "movl %s(%%rip), %%eax\n", entry->lexeme->lex_ident_t.value);
+            break;
+        case rfp:
+            asm_push(expr->_program, "movl -%lu(%%rbp), %%eax\n", entry->offset);
+            break;
+        default:
+            fprintf(stderr, "Register error #1\n");
+            exit(EXIT_FAILURE);
+            break;
+    }
+
     // Return
     return expr;
 }
@@ -994,7 +1104,8 @@ ast_t *reduce_expr_int(lexeme_t *literal) {
     expr->lexeme = literal;
     // ILOC
     expr->value = iloc_next_id();
-    iloc_push(expr->program, load_i, literal->lex_int_t.value, expr->value, 0);
+    asm_push(expr->_program, "// lit (int)\n");
+    asm_push(expr->_program, "movl $%lu, %%eax\n", literal->lex_int_t.value);
     // Return
     return expr;
 }
@@ -1005,7 +1116,6 @@ ast_t *reduce_expr_float(lexeme_t *literal) {
     expr->type = type_float;
     expr->lexeme = literal;
     // ILOC
-    // TODO - Didio: Handle floats
     // Return
     return expr;
 }
@@ -1018,7 +1128,9 @@ ast_t *reduce_expr_bool(lexeme_t *literal) {
     // ILOC
     expr->value = iloc_next_id();
     uint64_t bool_val = literal->lex_bool_t.value == 0 ? 0 : 1;
-    iloc_push(expr->program, load_i, bool_val, expr->value, 0);
+    expr->value = iloc_next_id();
+    asm_push(expr->_program, "// lit (bool)\n");
+    asm_push(expr->_program, "movl $%lu, %%eax\n", bool_val);
     // Return
     return expr;
 }
@@ -1052,8 +1164,8 @@ ast_t *reduce_expr_call(lexeme_t *literal, list_t *arguments) {
 }
 
 /********\
-* Lexeme *
-\********/
+ * Lexeme *
+ \********/
 lexeme_t *lexeme_new(lexeme_type_t type, uint64_t line, uint64_t column) {
     lexeme_t *lexeme = (lexeme_t*) malloc(sizeof(lexeme_t));
     if (lexeme == NULL) {
@@ -1102,8 +1214,8 @@ lexeme_t *lexeme_clone(lexeme_t *lexeme) {
 }
 
 /*******************\
-* Semantic Analysis *
-\*******************/
+ * Semantic Analysis *
+ \*******************/
 type_t type_infer(type_t left, type_t right) {
     if (left == right) {
         return left;
@@ -1159,7 +1271,7 @@ int register_variable(scope_t *scope, type_t type, lexeme_t *lexeme) {
         }
         return -1;
     }
-    
+
     name_entry_t *name_entry = (name_entry_t*) malloc(sizeof(name_entry_t));
     if (name_entry == NULL) {
         fprintf(stderr, "ERROR: Failed to allocate memory for name_entry_t (errno = %d) [at file \"" __FILE__ "\", line %d]\n", errno, __LINE__-2);
@@ -1251,8 +1363,8 @@ name_entry_t *scope_find(scope_t *scope, char *name) {
 }
 
 /*******************\
-*      ETAPA 6      *
-\*******************/
+ *      ETAPA 6      *
+ \*******************/
 typedef struct {
     uint64_t register_id;
     uint64_t start;
