@@ -736,11 +736,11 @@ ast_t *reduce_expr_eq(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -765,11 +765,11 @@ ast_t *reduce_expr_ne(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -794,11 +794,11 @@ ast_t *reduce_expr_lt(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -823,11 +823,11 @@ ast_t *reduce_expr_gt(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -852,11 +852,11 @@ ast_t *reduce_expr_le(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -881,11 +881,11 @@ ast_t *reduce_expr_ge(ast_t *left, ast_t *right) {
     iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
     // left > right
     iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i, label_done, 0, 0);
     // !(left > right)
     iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -1008,11 +1008,11 @@ ast_t *reduce_expr_not(ast_t *expr) {
     iloc_push(new_expr->program, cbr,    zero,                label_expr_is_false, label_expr_is_true);
     // If expr is 0, set new_expr to 1
     iloc_push(new_expr->program, label,  label_expr_is_false, 0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value,     1, 0);
+    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
     iloc_push(new_expr->program, jump_i,   label_done,          0, 0);
     // If expr is not 0, set new_expr to 0
     iloc_push(new_expr->program, label,  label_expr_is_true,  0, 0);
-    iloc_push(new_expr->program, load_i, new_expr->value,     0, 0);
+    iloc_push(new_expr->program, load_i, 0, new_expr->value,     0);
     iloc_push(new_expr->program, label,  label_done,          0, 0);
     // Return
     return new_expr;
