@@ -1,9 +1,0 @@
-loadI 10 => r1
-loadI 0 => r2
-L1:
-cmp_EQ r1, r2 => r3
-cbr r3 -> L3, L2 
-L2:
-subI r1, 1 => r1
-jumpI -> L1
-L3:
