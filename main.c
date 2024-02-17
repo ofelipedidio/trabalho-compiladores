@@ -23,6 +23,7 @@ typedef struct {
     int64_t id;
     int64_t next_1; // label
     int64_t next_2; // label
+    int64_t next_i; // label
     int64_t next_nat; // label
 } block_t;
 
@@ -35,6 +36,7 @@ block_t new_block() {
     block.id = -1;
     block.next_1 = -1;
     block.next_2 = -1;
+    block.next_i = -1;
     block.next_nat = -1;
     return block;
 }
@@ -72,7 +74,7 @@ void generate_graph(ast_t *program) {
                 break;
             case jump_i:
                 iloc_instruction_to_string(&inst);
-                current_block.next_1 = inst.r1;
+                current_block.next_i = inst.r1;
                 ignore_label = 1;
                 nlist_push(blocks, current_block);
                 fprintf(stdout, "\"];\n");
@@ -107,6 +109,9 @@ void generate_graph(ast_t *program) {
         }
         if (block.next_2 >= 0) {
             fprintf(stdout, "\"%ld\" -> \"%ld\" [label=\"false\"];\n", block.id, block.next_2);
+        }
+        if (block.next_i >= 0) {
+            fprintf(stdout, "\"%ld\" -> \"%ld\";\n", block.id, block.next_i);
         }
         if (block.next_nat >= 0) {
             fprintf(stdout, "\"%ld\" -> \"%ld\";\n", block.id, block.next_nat);
