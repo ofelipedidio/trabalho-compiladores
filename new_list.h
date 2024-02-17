@@ -12,7 +12,7 @@
 
 #define nlist_init(list) \
     (list).capacity = 1; \
-    (list).items = (typeof((list).items)) calloc((list).capacity * sizeof(typeof(list.items[0]))); \
+    (list).items = (typeof((list).items)) calloc((list).capacity, sizeof(typeof(list.items[0]))); \
     (list).length = 0;
 
 #define nlist_push(list, item) \
