@@ -1,0 +1,62 @@
+digraph {
+node [shape="box"];
+"-1" [label="jumpI -> L2
+"];
+"2" [label="L2:
+loadI 3 => r3
+storeAI r3 => rfp, 0
+loadI 0 => r4
+storeAI r4 => rfp, 1
+"];
+"23" [label="L23:
+loadAI rfp, 1 => r5
+loadI 100 => r6
+cmp_LT r5, r6 -> r7
+cbr r7 -> L25, L24
+"];
+"25" [label="L25:
+loadAI rfp, 0 => r8
+loadI 3 => r9
+cmp_EQ r8, r9 -> r10
+cbr r10 -> L12, L13
+"];
+"12" [label="L12:
+loadI 3 => r11
+jumpI -> L1
+"];
+"13" [label="L13:
+loadAI rfp, 0 => r14
+loadI 5 => r15
+cmp_EQ r14, r15 -> r16
+cbr r16 -> L18, L19
+"];
+"18" [label="L18:
+loadI 5 => r17
+jumpI -> L1
+"];
+"19" [label="L19:
+loadAI rfp, 1 => r20
+loadI 1 => r21
+add r20, r21 => r22
+storeAI r22 => rfp, 1
+jumpI -> L23
+"];
+"24" [label="L24:
+loadI 0 => r26
+jumpI -> L1
+"];
+"1" [label="L1:
+"];
+"-1" -> "2";
+"2" -> "23";
+"23" -> "25" [label="true"];
+"23" -> "24" [label="false"];
+"25" -> "12" [label="true"];
+"25" -> "13" [label="false"];
+"12" -> "1";
+"13" -> "18" [label="true"];
+"13" -> "19" [label="false"];
+"18" -> "1";
+"19" -> "23";
+"24" -> "1";
+}

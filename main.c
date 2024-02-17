@@ -123,7 +123,7 @@ void generate_graph(ast_t *program) {
 
 int main (int argc, char **argv) {
     int ret = yyparse(); 
-    fprintf(stderr, "Reached main with code %d (arvore = %p)\n", ret, arvore);
+    // fprintf(stderr, "Reached main with code %d (arvore = %p)\n", ret, arvore);
     yylex_destroy();
     if (ret != 0) {
         return ret;

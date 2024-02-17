@@ -1,0 +1,88 @@
+digraph {
+node [shape="box"];
+"-1" [label="jumpI -> L2
+"];
+"2" [label="L2:
+loadI 10 => r3
+storeAI r3 => rbss, 0
+loadI 0 => r4
+storeAI r4 => rfp, 0
+loadI 0 => r5
+storeAI r5 => rfp, 1
+"];
+"39" [label="L39:
+loadAI rfp, 1 => r6
+loadAI rbss, 0 => r7
+cmp_LT r6, r7 -> r8
+loadI 0 => r13
+cmp_NE r8, r13 -> r12
+cbr r12 -> L16, L15
+"];
+"15" [label="L15:
+loadAI rfp, 0 => r9
+loadI 10 => r10
+cmp_LT r9, r10 -> r11
+loadI 0 => r14
+cmp_NE r11, r14 -> r12
+"];
+"16" [label="L16:
+cbr r12 -> L41, L40
+"];
+"41" [label="L41:
+loadAI rfp, 1 => r17
+loadI 2 => r18
+div r17, r18 => r20
+mult r18, r20 => r20
+sub r17, r20 => r19
+loadI 0 => r21
+cmp_EQ r19, r21 -> r22
+cbr r22 -> L33, L34
+"];
+"33" [label="L33:
+loadAI rfp, 0 => r23
+loadI 1 => r24
+add r23, r24 => r25
+storeAI r25 => rfp, 0
+jumpI -> L35
+"];
+"34" [label="L34:
+loadI 3 => r26
+loadAI rfp, 0 => r27
+mult r26, r27 => r28
+loadI 2 => r29
+div r28, r29 => r30
+loadAI rfp, 1 => r31
+mult r30, r31 => r32
+storeAI r32 => rfp, 0
+"];
+"35" [label="L35:
+loadAI rfp, 1 => r36
+loadI 1 => r37
+add r36, r37 => r38
+storeAI r38 => rfp, 1
+jumpI -> L39
+"];
+"40" [label="L40:
+loadAI rfp, 0 => r42
+loadI 1 => r43
+add r42, r43 => r44
+storeAI r44 => rfp, 0
+loadAI rfp, 0 => r45
+jumpI -> L1
+"];
+"1" [label="L1:
+"];
+"-1" -> "2";
+"2" -> "39";
+"39" -> "16" [label="true"];
+"39" -> "15" [label="false"];
+"15" -> "16";
+"16" -> "41" [label="true"];
+"16" -> "40" [label="false"];
+"41" -> "33" [label="true"];
+"41" -> "34" [label="false"];
+"33" -> "35";
+"34" -> "35";
+"35" -> "39";
+"40" -> "1";
+}

@@ -341,7 +341,7 @@ void reduce_push_scope() {
 }
 
 void reduce_pop_scope() {
-    print_scope(stderr, current_scope);
+    // print_scope(stderr, current_scope);
     scope_t *temp_scope = current_scope;
     current_scope = current_scope->parent;
     scope_free(temp_scope);
