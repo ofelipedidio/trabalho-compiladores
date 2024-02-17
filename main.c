@@ -39,7 +39,7 @@ block_t new_block() {
     return block;
 }
 
-void fooda_se(ast_t *program) {
+void generate_graph(ast_t *program) {
     blocks_t blocks;
     nlist_init(blocks);
 
@@ -127,9 +127,9 @@ int main (int argc, char **argv) {
     if (program != NULL) {
         // ast_program_export(program);
         // ast_program_free(program);
-        iloc_program_to_string(program->program);
+         iloc_program_to_string(program->program);
         // print_ast(stderr, program);
-        fooda_se(program);
+        generate_graph(program);
     }
 
     return 0;
