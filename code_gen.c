@@ -12,6 +12,7 @@
 uint64_t last_id = 1;
 scope_t *current_scope = NULL;
 scope_t *global_scope = NULL;
+uint64_t final_label = 0;
 
 /******************************\
 * Intermediate Code Generation *
@@ -335,6 +336,7 @@ void reduce_push_scope() {
     }
     if (current_scope->parent == NULL) {
         global_scope = current_scope;
+        final_label = iloc_next_id();
     }
 }
 
@@ -358,7 +360,8 @@ ast_t *reduce_program(ast_t *global_list) {
     ast_t *program = ast_new(ast_program);
     iloc_push(program->program, jump_i, global_list->value, 0, 0);
     iloc_program_append(program->program, global_list->program);
-    return global_list;
+    iloc_push(program->program, label, final_label, 0, 0);
+    return program;
 }
 
 ast_t *reduce_global_list_empty() {
@@ -546,6 +549,8 @@ ast_t *reduce_command_return(ast_t *commands, ast_t *expr) {
     // ILOC
     // TODO - Didio: Handle functions
     // Return
+    iloc_push(return_->program, jump_i, final_label, 0, 0);
+    iloc_program_append(commands->program, return_->program);
     return commands;
 }
 

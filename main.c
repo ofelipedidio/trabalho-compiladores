@@ -61,7 +61,7 @@ void generate_graph(ast_t *program) {
 
     fprintf(stdout, "digraph {\n");
     fprintf(stdout, "\"%ld\" [label=\"", current_block.id);
-    for (uint64_t i = 1; i < program->program->length; i++) {
+    for (uint64_t i = 0; i < program->program->length; i++) {
         iloc_instruction_t inst = program->program->instructions[i];
         switch (inst.instruction) {
             case cbr:
