@@ -1,5 +1,6 @@
+int n;
+
 () >= int ! main {
-    int n;
     n = 10;
 
     int a;
@@ -8,12 +9,12 @@
     int i;
     i = 0;
 
-    while (i < n) {
+    while (i < n & a < 10) {
         {
             if (i % 2 == 0) {
                 a = a + 1;
             } else {
-                a = (3 * a) / 2;
+                a = (3 * a) / 2 * i;
             };
         };
         i = i + 1;
