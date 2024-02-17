@@ -60,6 +60,7 @@ void generate_graph(ast_t *program) {
     // label1:
 
     fprintf(stdout, "digraph {\n");
+    fprintf(stdout, "node [shape=\"box\"];\n");
     fprintf(stdout, "\"%ld\" [label=\"", current_block.id);
     for (uint64_t i = 0; i < program->program->length; i++) {
         iloc_instruction_t inst = program->program->instructions[i];
