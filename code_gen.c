@@ -549,6 +549,7 @@ ast_t *reduce_command_return(ast_t *commands, ast_t *expr) {
     // ILOC
     // TODO - Didio: Handle functions
     // Return
+    iloc_program_append(return_->program, expr->program);
     iloc_push(return_->program, jump_i, final_label, 0, 0);
     iloc_program_append(commands->program, return_->program);
     return commands;
@@ -562,17 +563,13 @@ ast_t *reduce_command_if_else(ast_t *commands, ast_t *cond, ast_t *then_block, a
     ast_push(if_, else_block);
     ast_push(commands, if_);
     // ILOC
-    uint64_t zero = iloc_next_id();
-    uint64_t cond_is_false = iloc_next_id();
     uint64_t label_then = iloc_next_id();
     uint64_t label_else = iloc_next_id();
     uint64_t label_done = iloc_next_id();
     // Compute condition
     iloc_program_append(if_->program, cond->program);
     // Compare condition
-    iloc_push(if_->program, load_i, 0, zero, 0);
-    iloc_push(if_->program, cmp_eq, cond->value, zero, cond_is_false);
-    iloc_push(if_->program, cbr, cond_is_false, label_else, label_then);
+    iloc_push(if_->program, cbr, cond->value, label_then, label_else);
     // Then block
     iloc_push(if_->program, label, label_then, 0, 0);
     iloc_program_append(if_->program, then_block->program);
@@ -595,16 +592,12 @@ ast_t *reduce_command_if(ast_t *commands, ast_t *cond, ast_t *then_block) {
     ast_push(if_, NULL);
     ast_push(commands, if_);
     // ILOC
-    uint64_t zero = iloc_next_id();
-    uint64_t cond_is_false = iloc_next_id();
     uint64_t label_then = iloc_next_id();
     uint64_t label_done = iloc_next_id();
     // Compute condition
     iloc_program_append(if_->program, cond->program);
     // Compare condition
-    iloc_push(if_->program, load_i, 0, zero, 0);
-    iloc_push(if_->program, cmp_eq, cond->value, zero, cond_is_false);
-    iloc_push(if_->program, cbr, cond_is_false, label_done, label_then);
+    iloc_push(if_->program, cbr, cond->value, label_then, label_done);
     // Then block
     iloc_push(if_->program, label, label_then, 0, 0);
     iloc_program_append(if_->program, then_block->program);
@@ -623,15 +616,11 @@ ast_t *reduce_command_while(ast_t *commands, ast_t *cond, ast_t *block) {
     ast_push(commands, while_);
     // ILOC
     uint64_t new_label = iloc_next_id();
-    uint64_t zero = iloc_next_id();
-    uint64_t cond_is_false = iloc_next_id();
     uint64_t label_break = iloc_next_id();
     uint64_t label_continue = iloc_next_id();
     iloc_push(while_->program, label, new_label, 0, 0);
     iloc_program_append(while_->program, cond->program);
-    iloc_push(while_->program, load_i, 0, zero, 0);
-    iloc_push(while_->program, cmp_eq, cond->value, zero, cond_is_false);
-    iloc_push(while_->program, cbr, cond_is_false, label_break, label_continue);
+    iloc_push(while_->program, cbr, cond->value, label_continue, label_break);
     iloc_push(while_->program, label, label_continue, 0, 0);
     iloc_program_append(while_->program, block->program);
     iloc_push(while_->program, jump_i, new_label, 0, 0);
@@ -654,31 +643,22 @@ ast_t *reduce_expr_or(ast_t *left, ast_t *right) {
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
+    uint64_t t1 = iloc_next_id();
+    uint64_t t2 = iloc_next_id();
     uint64_t label_compute_right = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
     uint64_t label_done = iloc_next_id();
     // Compute left
     iloc_program_append(new_expr->program, left->program);
     // Compare left to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, left->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_compute_right, label_true);
+    iloc_push(new_expr->program, load_i, 0, t1, 0);
+    iloc_push(new_expr->program, cmp_ne, left->value, t1, new_expr->value);
+    iloc_push(new_expr->program, cbr, new_expr->value, label_done, label_compute_right);
     // Compute right
     iloc_push(new_expr->program, label, label_compute_right, 0, 0);
     iloc_program_append(new_expr->program, right->program);
     // Compare right to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, right->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_false, label_true);
-    // The expression is false
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // The expression is true
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, t2, 0);
+    iloc_push(new_expr->program, cmp_ne, right->value, t2, new_expr->value);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -693,30 +673,21 @@ ast_t *reduce_expr_and(ast_t *left, ast_t *right) {
     // ILOC
     new_expr->value = iloc_next_id();
     uint64_t label_compute_right = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
     uint64_t label_done = iloc_next_id();
+    uint64_t t1 = iloc_next_id();
+    uint64_t t2 = iloc_next_id();
     // Compute left
     iloc_program_append(new_expr->program, left->program);
     // Compare left to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, left->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_false, label_compute_right);
+    iloc_push(new_expr->program, load_i, 0, t1, 0);
+    iloc_push(new_expr->program, cmp_ne, left->value, t1, new_expr->value);
+    iloc_push(new_expr->program, cbr, new_expr->value, label_compute_right, label_done);
     // Compute right
     iloc_push(new_expr->program, label, label_compute_right, 0, 0);
     iloc_program_append(new_expr->program, right->program);
     // Compare right to 0
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, cmp_eq, right->value, new_expr->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_false, label_true);
-    // The expression is false
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // The expression is true
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
+    iloc_push(new_expr->program, load_i, 0, t2, 0);
+    iloc_push(new_expr->program, cmp_ne, right->value, t2, new_expr->value);
     // Done
     iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
@@ -730,24 +701,11 @@ ast_t *reduce_expr_eq(ast_t *left, ast_t *right) {
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_done = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
     iloc_push(new_expr->program, cmp_eq, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
     return new_expr;
 }
@@ -759,24 +717,11 @@ ast_t *reduce_expr_ne(ast_t *left, ast_t *right) {
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_done = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
     iloc_push(new_expr->program, cmp_ne, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
     return new_expr;
 }
@@ -788,24 +733,11 @@ ast_t *reduce_expr_lt(ast_t *left, ast_t *right) {
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_done = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
     iloc_push(new_expr->program, cmp_lt, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
     return new_expr;
 }
@@ -817,24 +749,11 @@ ast_t *reduce_expr_gt(ast_t *left, ast_t *right) {
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_done = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
     iloc_push(new_expr->program, cmp_gt, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
     return new_expr;
 }
@@ -846,24 +765,11 @@ ast_t *reduce_expr_le(ast_t *left, ast_t *right) {
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_done = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
     iloc_push(new_expr->program, cmp_le, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
     return new_expr;
 }
@@ -875,24 +781,11 @@ ast_t *reduce_expr_ge(ast_t *left, ast_t *right) {
     ast_push(new_expr, right);
     // ILOC
     new_expr->value = iloc_next_id();
-    uint64_t label_true = iloc_next_id();
-    uint64_t label_false = iloc_next_id();
-    uint64_t label_done = iloc_next_id();
     // Compute left and right
     iloc_program_append(new_expr->program, left->program);
     iloc_program_append(new_expr->program, right->program);
     // Compute new_expr
     iloc_push(new_expr->program, cmp_ge, left->value, right->value, new_expr->value);
-    iloc_push(new_expr->program, cbr, new_expr->value, label_true, label_false);
-    // left > right
-    iloc_push(new_expr->program, label, label_true, 0, 0);
-    iloc_push(new_expr->program, load_i, 1, new_expr->value, 0);
-    iloc_push(new_expr->program, jump_i, label_done, 0, 0);
-    // !(left > right)
-    iloc_push(new_expr->program, label, label_false, 0, 0);
-    iloc_push(new_expr->program, load_i, 0, new_expr->value, 0);
-    // Done
-    iloc_push(new_expr->program, label, label_done, 0, 0);
     // Return
     return new_expr;
 }
