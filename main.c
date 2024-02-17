@@ -127,7 +127,7 @@ int main (int argc, char **argv) {
     if (program != NULL) {
         // ast_program_export(program);
         // ast_program_free(program);
-         iloc_program_to_string(program->program);
+        // iloc_program_to_string(program->program);
         // print_ast(stderr, program);
         generate_graph(program);
     }
