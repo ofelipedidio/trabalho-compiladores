@@ -103,10 +103,10 @@ void generate_graph(ast_t *program) {
     for (size_t i = 0; i < blocks.length; i++) {
         block_t block = nlist_get_unsafe(blocks, i);
         if (block.next_1 >= 0) {
-            fprintf(stdout, "\"%ld\" -> \"%ld\";\n", block.id, block.next_1);
+            fprintf(stdout, "\"%ld\" -> \"%ld\" [label=\"true\"];\n", block.id, block.next_1);
         }
         if (block.next_2 >= 0) {
-            fprintf(stdout, "\"%ld\" -> \"%ld\";\n", block.id, block.next_2);
+            fprintf(stdout, "\"%ld\" -> \"%ld\" [label=\"false\"];\n", block.id, block.next_2);
         }
         if (block.next_nat >= 0) {
             fprintf(stdout, "\"%ld\" -> \"%ld\";\n", block.id, block.next_nat);
